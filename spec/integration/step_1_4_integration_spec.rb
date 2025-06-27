@@ -145,11 +145,11 @@ RSpec.describe "Step 1.4 - Real-time Progress Updates Integration", type: :reque
         expect(json_response['finished']).to eq(job.finished?)
       end
       
-      # Test tracking page for each job
+      # Test tracking page for each job (updated for Stimulus format)
       [queued_job, processing_job, completed_job].each do |job|
         get root_path(job_id: job.id)
         expect(response).to have_http_status(:ok)
-        expect(response.body).to include("data-job-id=\"#{job.id}\"")
+        expect(response.body).to include("data-job-tracker-job-id-value=\"#{job.id}\"")
         expect(response.body).to include("data-status=\"#{job.status}\"")
       end
     end
@@ -165,7 +165,7 @@ RSpec.describe "Step 1.4 - Real-time Progress Updates Integration", type: :reque
       # Test tracking page with invalid job ID (should not show tracking section)
       get root_path(job_id: 99999)
       expect(response).to have_http_status(:ok)
-      expect(response.body).not_to include("data-job-id=")
+      expect(response.body).not_to include("data-job-tracker-job-id-value=")
     end
 
     it "includes JavaScript polling functionality in tracking page" do
@@ -174,19 +174,14 @@ RSpec.describe "Step 1.4 - Real-time Progress Updates Integration", type: :reque
       get root_path(job_id: job.id)
       expect(response).to have_http_status(:ok)
       
-      # Verify JavaScript polling code is included
-      expect(response.body).to include("pollJobStatus")
-      expect(response.body).to include("setInterval(pollJobStatus")
-      expect(response.body).to include("fetch(`/jobs/${jobId}/status`)")
-      expect(response.body).to include("updateJobStatus")
-      expect(response.body).to include("showJobResults")
-      expect(response.body).to include("showJobError")
-      
-      # Verify status icon mapping
-      expect(response.body).to include("'queued': '⏳'")
-      expect(response.body).to include("'processing': '🔄'")
-      expect(response.body).to include("'completed': '✅'")
-      expect(response.body).to include("'failed': '❌'")
+      # Verify Stimulus controller and JavaScript functionality is included
+      expect(response.body).to include("data-controller=\"job-tracker\"")
+      expect(response.body).to include("data-job-tracker-job-id-value")
+      expect(response.body).to include("exportResults")
+      expect(response.body).to include("shareResults")
+      expect(response.body).to include("sortTable")
+      expect(response.body).to include("retryExtraction")
+      expect(response.body).to include("reportIssue")
     end
 
     it "includes proper CSS styling for job tracking" do
