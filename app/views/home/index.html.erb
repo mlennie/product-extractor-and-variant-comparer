@@ -482,22 +482,98 @@
     border-radius: 8px;
     padding: 1.5rem;
     margin-top: 1rem;
+    animation: slideIn 0.3s ease-out;
   }
 
   .job-error h3 {
     color: #dc2626;
-    margin-bottom: 0.5rem;
+    margin-bottom: 1rem;
     font-size: 1.125rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .error-message {
+    color: #7f1d1d;
+    background: #fee2e2;
+    padding: 1rem;
+    border-radius: 6px;
+    margin: 1rem 0;
+    border-left: 4px solid #dc2626;
+    line-height: 1.5;
+  }
+
+  .technical-details {
+    margin: 1rem 0;
+    border: 1px solid #fca5a5;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .technical-details summary {
+    background: #fee2e2;
+    padding: 0.75rem;
+    cursor: pointer;
+    font-weight: 600;
+    color: #7f1d1d;
+    border-bottom: 1px solid #fca5a5;
+  }
+
+  .technical-details summary:hover {
+    background: #fecaca;
   }
 
   .error-details {
     color: #7f1d1d;
     font-family: monospace;
     font-size: 0.875rem;
-    background: #fee2e2;
+    background: #fef2f2;
     padding: 0.75rem;
-    border-radius: 4px;
-    margin-top: 0.75rem;
+    word-break: break-all;
+    border: none;
+    margin: 0;
+  }
+
+  .error-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-retry {
+    background: #dc2626;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-retry:hover {
+    background: #b91c1c;
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary {
+    background: #6b7280;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-secondary:hover {
+    background: #4b5563;
+    transform: translateY(-1px);
   }
 
   /* Responsive Job Tracking */
@@ -1008,12 +1084,95 @@
       const errorContainer = document.getElementById('job-error');
       if (!errorContainer) return;
       
+      // Hide results container if visible
+      const resultsContainer = document.getElementById('job-results');
+      if (resultsContainer) {
+        resultsContainer.style.display = 'none';
+      }
+      
       let errorHTML = '<h3>❌ Extraction Failed</h3>';
       errorHTML += '<p>We encountered an error while processing your request:</p>';
-      errorHTML += '<div class="error-details">' + data.error_message + '</div>';
+      
+      // More user-friendly error messages
+      let userFriendlyMessage = getUserFriendlyErrorMessage(data.error_message);
+      errorHTML += '<div class="error-message">' + userFriendlyMessage + '</div>';
+      
+      if (data.error_message) {
+        errorHTML += '<details class="technical-details">';
+        errorHTML += '<summary>Technical Details</summary>';
+        errorHTML += '<div class="error-details">' + data.error_message + '</div>';
+        errorHTML += '</details>';
+      }
+      
+      // Add retry action
+      errorHTML += '<div class="error-actions">';
+      errorHTML += '<button onclick="retryExtraction()" class="btn btn-retry">🔄 Try Again</button>';
+      errorHTML += '<button onclick="reportIssue(\'' + data.id + '\')" class="btn btn-secondary">📋 Report Issue</button>';
+      errorHTML += '</div>';
       
       errorContainer.innerHTML = errorHTML;
       errorContainer.style.display = 'block';
+    }
+    
+    function getUserFriendlyErrorMessage(technicalError) {
+      if (!technicalError) return 'An unknown error occurred.';
+      
+      const errorLower = technicalError.toLowerCase();
+      
+      if (errorLower.includes('403') || errorLower.includes('forbidden')) {
+        return '🚫 <strong>Access Blocked:</strong> The website is blocking automated requests. This is common for sites with anti-bot protection. Try a different product URL from a site like Target, Walmart, or a smaller retailer.';
+      } else if (errorLower.includes('404') || errorLower.includes('not found')) {
+        return '🔍 <strong>Page Not Found:</strong> The product page could not be found. Please check that the URL is correct and the product still exists.';
+      } else if (errorLower.includes('timeout') || errorLower.includes('timed out')) {
+        return '⏱️ <strong>Request Timeout:</strong> The website took too long to respond. This might be a temporary issue - please try again.';
+      } else if (errorLower.includes('connection') || errorLower.includes('network')) {
+        return '🌐 <strong>Connection Error:</strong> Unable to connect to the website. Please check the URL and try again.';
+      } else if (errorLower.includes('rate limit') || errorLower.includes('too many requests')) {
+        return '🚦 <strong>Rate Limited:</strong> Too many requests have been made. Please wait a few minutes before trying again.';
+      } else if (errorLower.includes('ssl') || errorLower.includes('certificate')) {
+        return '🔒 <strong>Security Error:</strong> There\'s an issue with the website\'s security certificate. Try a different URL.';
+      } else if (errorLower.includes('parsing') || errorLower.includes('extract')) {
+        return '📄 <strong>Content Error:</strong> Unable to extract product information from this page. The page might not contain product data or might be in an unsupported format.';
+      } else {
+        return '❗ <strong>Processing Error:</strong> Something went wrong while extracting the product data. Please try again or contact support if the issue persists.';
+      }
+    }
+    
+    function retryExtraction() {
+      // Hide error container
+      const errorContainer = document.getElementById('job-error');
+      if (errorContainer) {
+        errorContainer.style.display = 'none';
+      }
+      
+      // Reset the form and allow user to try again
+      window.location.reload();
+    }
+    
+    function reportIssue(jobId) {
+      const reportData = {
+        job_id: jobId,
+        timestamp: new Date().toISOString(),
+        user_agent: navigator.userAgent,
+        url: window.location.href
+      };
+      
+      const subject = encodeURIComponent('Product Extraction Error Report');
+      const body = encodeURIComponent(`Hello,
+
+I encountered an error while extracting product data:
+
+Job ID: ${jobId}
+Time: ${new Date().toLocaleString()}
+Page: ${window.location.href}
+
+Please investigate this issue.
+
+Technical Details:
+${JSON.stringify(reportData, null, 2)}`);
+      
+      const mailtoLink = `mailto:support@productcompare.com?subject=${subject}&body=${body}`;
+      window.open(mailtoLink);
     }
     
     function pollJobStatus() {

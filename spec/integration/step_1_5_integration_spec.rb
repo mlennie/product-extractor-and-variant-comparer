@@ -140,15 +140,42 @@ RSpec.describe "Step 1.5 - Enhanced Results Display & User Experience Integratio
       expect(response.body).to include('.variants-table')
       expect(response.body).to include('.best-badge')
       
+      # Test enhanced error display CSS
+      expect(response.body).to include('.error-message')
+      expect(response.body).to include('.technical-details')
+      expect(response.body).to include('.error-actions')
+      expect(response.body).to include('.btn-retry')
+      
       # Test JavaScript functions
       expect(response.body).to include('generateVariantRows')
       expect(response.body).to include('sortTable')
       expect(response.body).to include('exportResults')
       expect(response.body).to include('shareResults')
+      expect(response.body).to include('getUserFriendlyErrorMessage')
+      expect(response.body).to include('retryExtraction')
+      expect(response.body).to include('reportIssue')
       
       # Test responsive design CSS
       expect(response.body).to include('@media (max-width: 768px)')
       expect(response.body).to include('@media (max-width: 640px)')
+    end
+    
+    it "displays enhanced error messages for failed jobs" do
+      failed_job = create(:extraction_job, :failed, error_message: "HTTP 403: Forbidden")
+      
+      get root_path(job_id: failed_job.id)
+      
+      expect(response).to have_http_status(:ok)
+      
+      # Verify error display elements are present
+      expect(response.body).to include('id="job-error"')
+      expect(response.body).to include('getUserFriendlyErrorMessage')
+      
+      # Test that user-friendly error messages are implemented
+      expect(response.body).to include('Access Blocked')
+      expect(response.body).to include('Page Not Found')
+      expect(response.body).to include('Request Timeout')
+      expect(response.body).to include('Connection Error')
     end
   end
 
