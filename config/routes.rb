@@ -12,4 +12,7 @@ Rails.application.routes.draw do
   # Home routes
   get "home/index"
   root "home#index"
+  
+  # Product extraction routes
+  post "extract", to: "home#create"
 end

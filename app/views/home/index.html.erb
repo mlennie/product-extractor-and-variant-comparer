@@ -1,2 +1,293 @@
-<h1>Home#index</h1>
-<p>Find me in app/views/home/index.html.erb</p>
+<div class="home-container">
+  <% if flash[:success] %>
+    <div class="flash-message flash-success">
+      <div class="flash-icon">✅</div>
+      <div class="flash-content"><%= flash[:success] %></div>
+    </div>
+  <% end %>
+
+  <% if flash[:error] %>
+    <div class="flash-message flash-error">
+      <div class="flash-icon">❌</div>
+      <div class="flash-content"><%= flash[:error] %></div>
+    </div>
+  <% end %>
+
+  <div class="hero-section">
+    <h1 class="app-title">AI Product Comparison Tool</h1>
+    <p class="app-description">
+      Extract product data from any URL and compare prices, variants, and find the best value automatically using AI.
+    </p>
+  </div>
+
+  <div class="extraction-form-container">
+    <%= form_with url: extract_path, local: true, class: "extraction-form", id: "product-extraction-form" do |form| %>
+      <div class="form-group">
+        <%= form.label :url, "Product URL", class: "form-label" %>
+        <%= form.url_field :url, 
+            placeholder: "https://example.com/product", 
+            class: "form-input",
+            required: true,
+            pattern: "https?://.+",
+            title: "Please enter a valid URL starting with http:// or https://" %>
+        <div class="form-help">
+          Enter the URL of any product page (Amazon, Target, etc.)
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <%= form.submit "Extract Product Data", 
+            class: "btn btn-primary btn-large",
+            data: { 
+              disable_with: "🔄 Extracting...",
+              confirm: false
+            } %>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="features-section">
+    <div class="feature-grid">
+      <div class="feature-item">
+        <div class="feature-icon">🤖</div>
+        <h3>AI-Powered</h3>
+        <p>Advanced AI extracts product details, variants, and pricing automatically</p>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">💰</div>
+        <h3>Best Value Analysis</h3>
+        <p>Automatically calculates price-per-unit and identifies the best deals</p>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">⚡</div>
+        <h3>Real-time Processing</h3>
+        <p>Fast extraction with live progress updates and instant results</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .home-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  /* Flash Messages */
+  .flash-message {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    margin-bottom: 2rem;
+    border-radius: 8px;
+    border: 1px solid;
+    animation: slideIn 0.3s ease-out;
+  }
+
+  .flash-success {
+    background-color: #f0fdf4;
+    border-color: #bbf7d0;
+    color: #166534;
+  }
+
+  .flash-error {
+    background-color: #fef2f2;
+    border-color: #fecaca;
+    color: #dc2626;
+  }
+
+  .flash-icon {
+    margin-right: 0.75rem;
+    font-size: 1.25rem;
+  }
+
+  .flash-content {
+    font-weight: 500;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .hero-section {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+
+  .app-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+  }
+
+  .app-description {
+    font-size: 1.125rem;
+    color: #6b7280;
+    line-height: 1.6;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .extraction-form-container {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    margin-bottom: 3rem;
+  }
+
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+
+  .form-label {
+    display: block;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+  }
+
+  .form-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .form-input:invalid {
+    border-color: #ef4444;
+  }
+
+  .form-help {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-top: 0.5rem;
+  }
+
+  .form-actions {
+    text-align: center;
+  }
+
+  .btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 1rem;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(59, 130, 246, 0.3);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+
+  .btn-large {
+    padding: 1rem 2rem;
+    font-size: 1.125rem;
+  }
+
+  .features-section {
+    margin-top: 4rem;
+  }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+  }
+
+  .feature-item {
+    text-align: center;
+    padding: 1.5rem;
+    background: #f9fafb;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+  }
+
+  .feature-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .feature-item h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+  }
+
+  .feature-item p {
+    color: #6b7280;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .home-container {
+      padding: 1rem;
+    }
+
+    .app-title {
+      font-size: 2rem;
+    }
+
+    .extraction-form-container {
+      padding: 1.5rem;
+    }
+
+    .feature-grid {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+  }
+
+  /* Loading State */
+  .btn[data-disable-with] {
+    position: relative;
+  }
+
+  .btn[disabled] {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+</style>
