@@ -55,10 +55,9 @@ RSpec.describe 'AI Product Extraction Integration', type: :integration do
         result = extractor.extract_from_url('https://example-store.com/nike-air-max')
 
         expect(result[:success]).to be true
-        expect(result[:stage]).to eq('completed')
-        expect(result[:data]).to be_present
-        expect(result[:data]).to include('Nike')
-        expect(result[:data]).to include('Air Max')
+        expect(result[:product]).to be_a(Product)
+        expect(result[:product].name).to include('Nike')
+        expect(result[:variants]).to be_an(Array)
         expect(result[:processing_time]).to be > 0
         expect(result[:errors]).to be_empty
       end
@@ -74,16 +73,18 @@ RSpec.describe 'AI Product Extraction Integration', type: :integration do
         # Verify timing is reasonable (should be under 10 seconds for this test)
         expect(end_time - start_time).to be < 10
 
-        # Verify structure
+        # Verify structure (Step 3 format)
         expect(result).to have_key(:success)
-        expect(result).to have_key(:stage)
-        expect(result).to have_key(:data)
+        expect(result).to have_key(:product)
+        expect(result).to have_key(:variants)
+        expect(result).to have_key(:best_value_variant)
         expect(result).to have_key(:details)
 
-        # Verify details contain both fetch and extraction results
+        # Verify details contain fetch, extraction, and database results
         expect(result[:details]).to have_key(:fetch_result)
         expect(result[:details]).to have_key(:extraction_result)
-        expect(result[:details][:content_length]).to eq(product_html.length)
+        expect(result[:details]).to have_key(:database_result)
+        expect(result[:details][:fetch_result][:content_length]).to eq(product_html.length)
       end
     end
 
@@ -102,7 +103,8 @@ RSpec.describe 'AI Product Extraction Integration', type: :integration do
         result = extractor.extract_from_url('https://invalid-url.com')
 
         expect(result[:success]).to be false
-        expect(result[:stage]).to eq('fetch')
+        expect(result[:product]).to be_nil
+        expect(result[:variants]).to be_empty
         expect(result[:errors]).to include('Request timed out')
       end
 
@@ -129,7 +131,8 @@ RSpec.describe 'AI Product Extraction Integration', type: :integration do
         result = extractor.extract_from_url('https://example.com')
 
         expect(result[:success]).to be false
-        expect(result[:stage]).to eq('extraction')
+        expect(result[:product]).to be_nil
+        expect(result[:variants]).to be_empty
         expect(result[:errors]).to include('OpenAI API error: Rate limit exceeded')
       end
     end
@@ -164,7 +167,22 @@ RSpec.describe 'AI Product Extraction Integration', type: :integration do
   end
 
   describe 'Performance characteristics' do
-    let(:simple_html) { '<html><body><h1>Test Product</h1><p>$19.99</p></body></html>' }
+    let(:simple_html) do
+      <<~HTML
+        <html>
+          <body>
+            <h1>Test Product</h1>
+            <div class="product-info">
+              <div class="variant">
+                <span class="variant-name">Standard Size</span>
+                <span class="price">$19.99</span>
+                <span class="quantity">1 unit</span>
+              </div>
+            </div>
+          </body>
+        </html>
+      HTML
+    end
 
     before do
       allow_any_instance_of(WebPageFetcher).to receive(:fetch).and_return({
@@ -187,26 +205,34 @@ RSpec.describe 'AI Product Extraction Integration', type: :integration do
       total_time = end_time - start_time
 
       expect(result[:success]).to be true
+      expect(result[:product]).to be_a(Product)
+      expect(result[:variants]).to be_an(Array)
       # Should complete within 10 seconds for simple content
       expect(total_time).to be < 10
       expect(result[:processing_time]).to be_between(0.1, total_time + 0.1)
     end
 
     it 'measures processing time accurately' do
-      # Mock AI to take a specific amount of time
+      # Mock AI to return valid structured data
       allow_any_instance_of(AiContentExtractor).to receive(:extract_product_data) do
         sleep(0.1) # Simulate processing time
         {
           success: true,
-          data: "Test product data",
+          data: {
+            'product' => { 'name' => 'Test Product' },
+            'variants' => [{ 'name' => 'Test Variant', 'price_cents' => 1999, 'currency' => 'USD' }]
+          },
           url: 'https://example.com',
           model_used: 'gpt-3.5-turbo',
+          response_time: 0.1,
           errors: []
         }
       end
 
       result = extractor.extract_from_url('https://example.com')
 
+      expect(result[:success]).to be true
+      expect(result[:product]).to be_a(Product)
       expect(result[:processing_time]).to be >= 0.1
       expect(result[:processing_time]).to be < 1.0
     end

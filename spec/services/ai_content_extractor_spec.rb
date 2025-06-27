@@ -7,12 +7,29 @@ RSpec.describe AiContentExtractor, type: :service do
 
   # Mock OpenAI client
   let(:mock_client) { double('OpenAI::Client') }
+  let(:successful_json_response) do
+    {
+      "product" => {
+        "name" => "Test Product",
+        "description" => "Sample product description"
+      },
+      "variants" => [
+        {
+          "name" => "Standard Size",
+          "quantity_text" => "1 unit",
+          "quantity_numeric" => 1.0,
+          "price_cents" => 1999,
+          "currency" => "USD"
+        }
+      ]
+    }
+  end
   let(:successful_response) do
     {
       "choices" => [
         {
           "message" => {
-            "content" => "This is a product page for Test Product with price $19.99"
+            "content" => successful_json_response.to_json
           }
         }
       ]
@@ -135,17 +152,26 @@ RSpec.describe AiContentExtractor, type: :service do
 
     context 'successful extraction' do
       before do
-        allow(mock_client).to receive(:chat).and_return(successful_response)
+        allow(mock_client).to receive(:chat) do
+          sleep(0.01) # Small delay to ensure measurable response time
+          successful_response
+        end
       end
 
-      it 'successfully extracts product data' do
+      it 'successfully extracts structured product data' do
         result = extractor.extract_product_data(sample_html, sample_url)
 
         expect(result[:success]).to be true
-        expect(result[:data]).to eq("This is a product page for Test Product with price $19.99")
+        expect(result[:data]).to be_a(Hash)
+        expect(result[:data]['product']['name']).to eq("Test Product")
+        expect(result[:data]['variants']).to be_an(Array)
+        expect(result[:data]['variants'].size).to eq(1)
+        expect(result[:data]['variants'][0]['price_cents']).to eq(1999)
         expect(result[:url]).to eq(sample_url)
         expect(result[:model_used]).to eq("gpt-3.5-turbo")
         expect(result[:errors]).to be_empty
+        expect(result[:raw_response]).to eq(successful_json_response.to_json)
+        expect(result[:response_time]).to be > 0
       end
 
       it 'makes request with correct parameters' do
@@ -157,7 +183,7 @@ RSpec.describe AiContentExtractor, type: :service do
               hash_including(role: "user")
             ),
             temperature: 0.1,
-            max_tokens: 1000
+            max_tokens: 2000
           }
         ).and_return(successful_response)
 
@@ -263,6 +289,98 @@ RSpec.describe AiContentExtractor, type: :service do
       end
     end
 
+    context 'JSON response parsing' do
+      it 'handles valid JSON response' do
+        valid_json = {
+          "product" => { "name" => "Test Product" },
+          "variants" => [{ "name" => "Test Variant", "price_cents" => 100, "currency" => "USD" }]
+        }.to_json
+
+        response = {
+          "choices" => [{ "message" => { "content" => valid_json } }]
+        }
+        allow(mock_client).to receive(:chat).and_return(response)
+
+        result = extractor.extract_product_data(sample_html, sample_url)
+
+        expect(result[:success]).to be true
+        expect(result[:data]).to be_a(Hash)
+        expect(result[:errors]).to be_empty
+      end
+
+      it 'handles JSON with markdown formatting' do
+        json_with_markdown = "```json\n#{successful_json_response.to_json}\n```"
+        response = {
+          "choices" => [{ "message" => { "content" => json_with_markdown } }]
+        }
+        allow(mock_client).to receive(:chat).and_return(response)
+
+        result = extractor.extract_product_data(sample_html, sample_url)
+
+        expect(result[:success]).to be true
+        expect(result[:data]).to be_a(Hash)
+      end
+
+      it 'handles invalid JSON response' do
+        invalid_json = "{ invalid json }"
+        response = {
+          "choices" => [{ "message" => { "content" => invalid_json } }]
+        }
+        allow(mock_client).to receive(:chat).and_return(response)
+
+        result = extractor.extract_product_data(sample_html, sample_url)
+
+        expect(result[:success]).to be true
+        expect(result[:data]).to be_nil
+        expect(result[:errors]).to include(match(/Invalid JSON response/))
+      end
+
+      it 'handles missing product section' do
+        invalid_structure = { "variants" => [] }.to_json
+        response = {
+          "choices" => [{ "message" => { "content" => invalid_structure } }]
+        }
+        allow(mock_client).to receive(:chat).and_return(response)
+
+        result = extractor.extract_product_data(sample_html, sample_url)
+
+        expect(result[:success]).to be true
+        expect(result[:data]).to be_nil
+        expect(result[:errors]).to include("Missing or invalid 'product' section")
+      end
+
+      it 'handles missing variants section' do
+        invalid_structure = { "product" => { "name" => "Test" } }.to_json
+        response = {
+          "choices" => [{ "message" => { "content" => invalid_structure } }]
+        }
+        allow(mock_client).to receive(:chat).and_return(response)
+
+        result = extractor.extract_product_data(sample_html, sample_url)
+
+        expect(result[:success]).to be true
+        expect(result[:data]).to be_nil
+        expect(result[:errors]).to include("Missing or invalid 'variants' section")
+      end
+
+      it 'validates variant data structure' do
+        invalid_variant = {
+          "product" => { "name" => "Test" },
+          "variants" => [{ "name" => "Test", "price_cents" => "not_integer" }]
+        }.to_json
+        response = {
+          "choices" => [{ "message" => { "content" => invalid_variant } }]
+        }
+        allow(mock_client).to receive(:chat).and_return(response)
+
+        result = extractor.extract_product_data(sample_html, sample_url)
+
+        expect(result[:success]).to be true
+        expect(result[:data]).to be_nil
+        expect(result[:errors]).to include(match(/price_cents must be a non-negative integer/))
+      end
+    end
+
     context 'response structure' do
       before do
         allow(mock_client).to receive(:chat).and_return(successful_response)
@@ -273,8 +391,10 @@ RSpec.describe AiContentExtractor, type: :service do
 
         expect(result).to have_key(:success)
         expect(result).to have_key(:data)
+        expect(result).to have_key(:raw_response)
         expect(result).to have_key(:url)
         expect(result).to have_key(:model_used)
+        expect(result).to have_key(:response_time)
         expect(result).to have_key(:errors)
       end
 
@@ -296,7 +416,7 @@ RSpec.describe AiContentExtractor, type: :service do
     end
 
     it 'uses default max tokens' do
-      expect(extractor.instance_variable_get(:@max_tokens)).to eq(1000)
+      expect(extractor.instance_variable_get(:@max_tokens)).to eq(2000)
     end
 
     it 'allows custom configuration' do
