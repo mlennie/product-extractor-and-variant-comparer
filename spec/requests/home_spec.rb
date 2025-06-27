@@ -30,13 +30,10 @@ RSpec.describe "Homes", type: :request do
           post "/extract", params: { url: "http://example.com" }
         }.to change(ExtractionJob, :count).by(1)
         
-        expect(response).to redirect_to(root_path)
-        follow_redirect!
-        expect(response.body).to include("Extraction job created!")
-        expect(response.body).to include("Job ID:")
+        job = ExtractionJob.last
+        expect(response).to redirect_to(root_path(job_id: job.id))
         
         # Check the created job
-        job = ExtractionJob.last
         expect(job.url).to eq("http://example.com")
         expect(job.status).to eq("queued")
         expect(job.progress).to eq(0)
@@ -47,12 +44,10 @@ RSpec.describe "Homes", type: :request do
           post "/extract", params: { url: "https://example.com/product" }
         }.to change(ExtractionJob, :count).by(1)
         
-        expect(response).to redirect_to(root_path)
-        follow_redirect!
-        expect(response.body).to include("Extraction job created!")
+        job = ExtractionJob.last
+        expect(response).to redirect_to(root_path(job_id: job.id))
         
         # Check the created job
-        job = ExtractionJob.last
         expect(job.url).to eq("https://example.com/product")
         expect(job.status).to eq("queued")
       end
@@ -101,11 +96,12 @@ RSpec.describe "Homes", type: :request do
       end
     end
 
-    context "flash messages" do
-      it "displays success flash for valid URL with job creation" do
+    context "job tracking redirects" do
+      it "redirects to home page with job_id for valid URL" do
         post "/extract", params: { url: "https://example.com" }
-        expect(flash[:success]).to include("Extraction job created!")
-        expect(flash[:success]).to include("Job ID:")
+        job = ExtractionJob.last
+        expect(response).to redirect_to(root_path(job_id: job.id))
+        expect(response.location).to include("job_id=#{job.id}")
       end
 
       it "displays error flash for invalid URL" do
@@ -142,6 +138,141 @@ RSpec.describe "Homes", type: :request do
     it "includes proper form validation attributes" do
       expect(response.body).to include('required')
       expect(response.body).to include('pattern="https?://.+"')
+    end
+  end
+
+  describe "GET /jobs/:id/status" do
+    let(:extraction_job) { create(:extraction_job, :processing) }
+
+    context "with valid job ID" do
+      it "returns job status as JSON" do
+        get job_status_path(extraction_job.id)
+        
+        expect(response).to have_http_status(:ok)
+        expect(response.content_type).to include('application/json')
+        
+        json_response = JSON.parse(response.body)
+        expect(json_response['id']).to eq(extraction_job.id)
+        expect(json_response['status']).to eq('processing')
+        expect(json_response['progress']).to eq(extraction_job.progress)
+        expect(json_response['status_display']).to eq('Extracting product data')
+        expect(json_response['progress_display']).to eq("#{extraction_job.progress}%")
+        expect(json_response['url']).to eq(extraction_job.url)
+        expect(json_response['finished']).to eq(false)
+      end
+
+      it "includes product data when job is completed" do
+        product = create(:product, name: "Test Product")
+        variant = create(:product_variant, product: product, name: "Test Variant", 
+                        price_cents: 1299, quantity_numeric: 1.0, quantity_text: "1 piece")
+        result_data = { 'processing_time' => 3.5 }
+        
+        completed_job = create(:extraction_job, :completed, product: product, result_data: result_data)
+        
+        get job_status_path(completed_job.id)
+        
+        expect(response).to have_http_status(:ok)
+        json_response = JSON.parse(response.body)
+        
+        expect(json_response['finished']).to eq(true)
+        expect(json_response['product']).to be_present
+        expect(json_response['product']['name']).to eq("Test Product")
+        expect(json_response['product']['variants_count']).to eq(1)
+        expect(json_response['product']['best_value_variant']).to be_present
+        expect(json_response['processing_time']).to eq(3.5)
+      end
+
+      it "includes error message when job failed" do
+        failed_job = create(:extraction_job, :failed, error_message: "URL could not be fetched")
+        
+        get job_status_path(failed_job.id)
+        
+        expect(response).to have_http_status(:ok)
+        json_response = JSON.parse(response.body)
+        
+        expect(json_response['finished']).to eq(true)
+        expect(json_response['error_message']).to eq("URL could not be fetched")
+      end
+
+      it "returns correct status for queued job" do
+        queued_job = create(:extraction_job)  # Default status is 'queued'
+        
+        get job_status_path(queued_job.id)
+        
+        expect(response).to have_http_status(:ok)
+        json_response = JSON.parse(response.body)
+        
+        expect(json_response['status']).to eq('queued')
+        expect(json_response['status_display']).to eq('Queued for processing')
+        expect(json_response['finished']).to eq(false)
+      end
+    end
+
+    context "with invalid job ID" do
+      it "returns 404 for non-existent job" do
+        get job_status_path(99999)
+        
+        expect(response).to have_http_status(:not_found)
+        json_response = JSON.parse(response.body)
+        expect(json_response['error']).to eq('Job not found')
+      end
+    end
+  end
+
+  describe "GET / with job_id parameter" do
+    context "with valid job_id" do
+      it "displays job tracking section for existing job" do
+        job = create(:extraction_job, :processing, url: "https://example.com/long-url-that-should-be-truncated")
+        
+        get root_path(job_id: job.id)
+        
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include("Processing Your Request")
+        expect(response.body).to include("job-tracking-section")
+        expect(response.body).to include("data-job-id=\"#{job.id}\"")
+        expect(response.body).to include("Extracting product data from:")
+        expect(response.body).to include("https://example.com/long-url-that-should-be-trunca")
+      end
+
+      it "includes progress bar with current progress" do
+        job = create(:extraction_job, :processing, progress: 45)
+        
+        get root_path(job_id: job.id)
+        
+        expect(response.body).to include("progress-fill")
+        expect(response.body).to include("style=\"width: 45%\"")
+        expect(response.body).to include("45%")
+      end
+
+      it "includes status badge with current status" do
+        job = create(:extraction_job, :processing)
+        
+        get root_path(job_id: job.id)
+        
+        expect(response.body).to include("data-status=\"processing\"")
+        expect(response.body).to include("Extracting product data")
+      end
+    end
+
+    context "with invalid job_id" do
+      it "does not display tracking section for non-existent job" do
+        get root_path(job_id: 99999)
+        
+        expect(response).to have_http_status(:ok)
+        expect(response.body).not_to include("data-job-id=")
+        expect(response.body).not_to include("Processing Your Request")
+      end
+    end
+
+    context "without job_id parameter" do
+      it "displays normal home page without tracking section" do
+        get root_path
+        
+        expect(response).to have_http_status(:ok)
+        expect(response.body).not_to include("data-job-id=")
+        expect(response.body).to include("AI Product Comparison Tool")
+        expect(response.body).to include("extraction-form-container")
+      end
     end
   end
 end

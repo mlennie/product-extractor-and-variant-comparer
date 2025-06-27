@@ -10,11 +10,11 @@ RSpec.describe 'Step 1.3: Background Job Integration', type: :request do
         post '/extract', params: { url: test_url }
       }.to change(ExtractionJob, :count).by(1)
       
-      # Verify the response redirects correctly
-      expect(response).to redirect_to(root_path)
-      
       # Step 2: Check the extraction job was created correctly
       extraction_job = ExtractionJob.last
+      
+      # Verify the response redirects correctly with job_id for Step 1.4 tracking
+      expect(response).to redirect_to(root_path(job_id: extraction_job.id))
       expect(extraction_job.url).to eq(test_url)
       expect(extraction_job.status).to eq('queued')
       expect(extraction_job.progress).to eq(0)

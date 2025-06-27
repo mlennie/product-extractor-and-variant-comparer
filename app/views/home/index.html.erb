@@ -20,6 +20,40 @@
     </p>
   </div>
 
+  <% if @tracking_job %>
+    <div class="job-tracking-section" data-job-id="<%= @tracking_job.id %>">
+      <div class="tracking-header">
+        <h2>🔄 Processing Your Request</h2>
+        <p>Extracting product data from: <strong><%= truncate(@tracking_job.url, length: 60) %></strong></p>
+      </div>
+      
+      <div class="job-status-container">
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="progress-bar">
+            <div class="progress-fill" id="progress-fill" style="width: <%= @tracking_job.progress %>%"></div>
+          </div>
+          <div class="progress-text" id="progress-text"><%= @tracking_job.progress_display %></div>
+        </div>
+        
+        <div class="status-info">
+          <div class="status-badge" id="status-badge" data-status="<%= @tracking_job.status %>">
+            <span class="status-icon" id="status-icon">⏳</span>
+            <span class="status-text" id="status-text"><%= @tracking_job.status_display %></span>
+          </div>
+          <div class="job-time">Started at <%= @tracking_job.created_at.strftime('%I:%M %p') %></div>
+        </div>
+      </div>
+      
+      <div class="job-results" id="job-results" style="display: none;">
+        <!-- Results will be populated by JavaScript -->
+      </div>
+      
+      <div class="job-error" id="job-error" style="display: none;">
+        <!-- Error details will be populated by JavaScript -->
+      </div>
+    </div>
+  <% end %>
+
   <div class="extraction-form-container">
     <%= form_with url: extract_path, local: true, class: "extraction-form", id: "product-extraction-form" do |form| %>
       <div class="form-group">
@@ -290,4 +324,315 @@
     cursor: not-allowed;
     transform: none !important;
   }
+
+  /* Job Tracking Styles */
+  .job-tracking-section {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 3rem;
+    border: 2px solid #cbd5e1;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  .tracking-header h2 {
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+
+  .tracking-header p {
+    color: #64748b;
+    margin-bottom: 1.5rem;
+    word-break: break-all;
+  }
+
+  .job-status-container {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .progress-bar-container {
+    flex: 1;
+  }
+
+  .progress-bar {
+    width: 100%;
+    height: 12px;
+    background: #e2e8f0;
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+    margin-bottom: 0.5rem;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6 0%, #06b6d4 100%);
+    border-radius: 6px;
+    transition: width 0.5s ease;
+    position: relative;
+  }
+
+  .progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .progress-text {
+    text-align: center;
+    font-weight: 600;
+    color: #475569;
+    font-size: 0.875rem;
+  }
+
+  .status-info {
+    text-align: right;
+  }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+  }
+
+  .status-badge[data-status="queued"] {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .status-badge[data-status="processing"] {
+    background: #dbeafe;
+    color: #1e40af;
+    animation: pulse 2s infinite;
+  }
+
+  .status-badge[data-status="completed"] {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .status-badge[data-status="failed"] {
+    background: #fee2e2;
+    color: #dc2626;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  .status-icon {
+    font-size: 1.125rem;
+  }
+
+  .job-time {
+    font-size: 0.75rem;
+    color: #64748b;
+  }
+
+  .job-results {
+    background: #f0f9ff;
+    border: 1px solid #0ea5e9;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-top: 1rem;
+  }
+
+  .job-results h3 {
+    color: #0c4a6e;
+    margin-bottom: 1rem;
+    font-size: 1.125rem;
+  }
+
+  .result-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e0f2fe;
+  }
+
+  .result-item:last-child {
+    border-bottom: none;
+  }
+
+  .job-error {
+    background: #fef2f2;
+    border: 1px solid #f87171;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-top: 1rem;
+  }
+
+  .job-error h3 {
+    color: #dc2626;
+    margin-bottom: 0.5rem;
+    font-size: 1.125rem;
+  }
+
+  .error-details {
+    color: #7f1d1d;
+    font-family: monospace;
+    font-size: 0.875rem;
+    background: #fee2e2;
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin-top: 0.75rem;
+  }
+
+  /* Responsive Job Tracking */
+  @media (max-width: 768px) {
+    .job-status-container {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+    
+    .status-info {
+      text-align: left;
+    }
+    
+    .job-tracking-section {
+      padding: 1.5rem;
+    }
+  }
 </style>
+
+<% if @tracking_job %>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const jobId = document.querySelector('.job-tracking-section').dataset.jobId;
+    const pollInterval = 2000; // Poll every 2 seconds
+    let pollTimer;
+    
+    // Status icons mapping
+    const statusIcons = {
+      'queued': '⏳',
+      'processing': '🔄',
+      'completed': '✅',
+      'failed': '❌'
+    };
+    
+    function updateJobStatus(data) {
+      // Update progress bar
+      const progressFill = document.getElementById('progress-fill');
+      const progressText = document.getElementById('progress-text');
+      if (progressFill && progressText) {
+        progressFill.style.width = data.progress + '%';
+        progressText.textContent = data.progress_display;
+      }
+      
+      // Update status badge
+      const statusBadge = document.getElementById('status-badge');
+      const statusIcon = document.getElementById('status-icon');
+      const statusText = document.getElementById('status-text');
+      
+      if (statusBadge && statusIcon && statusText) {
+        statusBadge.setAttribute('data-status', data.status);
+        statusIcon.textContent = statusIcons[data.status] || '⏳';
+        statusText.textContent = data.status_display;
+      }
+      
+      // Show results if completed
+      if (data.status === 'completed' && data.product) {
+        showJobResults(data);
+      }
+      
+      // Show error if failed
+      if (data.status === 'failed' && data.error_message) {
+        showJobError(data);
+      }
+      
+      // Stop polling if job is finished
+      if (data.finished) {
+        clearInterval(pollTimer);
+        
+        // Update header to show completion
+        const header = document.querySelector('.tracking-header h2');
+        if (header) {
+          if (data.status === 'completed') {
+            header.textContent = '✅ Extraction Complete!';
+          } else if (data.status === 'failed') {
+            header.textContent = '❌ Extraction Failed';
+          }
+        }
+      }
+    }
+    
+    function showJobResults(data) {
+      const resultsContainer = document.getElementById('job-results');
+      if (!resultsContainer) return;
+      
+      let resultsHTML = '<h3>🎉 Product Data Successfully Extracted!</h3>';
+      resultsHTML += '<div class="result-item"><strong>Product Name:</strong> <span>' + data.product.name + '</span></div>';
+      resultsHTML += '<div class="result-item"><strong>Variants Found:</strong> <span>' + data.product.variants_count + ' variants</span></div>';
+      
+      if (data.product.best_value_variant) {
+        resultsHTML += '<div class="result-item"><strong>Best Value:</strong> <span>' + 
+          data.product.best_value_variant.name + ' - ' + 
+          data.product.best_value_variant.price_per_unit_display + 
+          '</span></div>';
+      }
+      
+      if (data.processing_time) {
+        resultsHTML += '<div class="result-item"><strong>Processing Time:</strong> <span>' + data.processing_time + ' seconds</span></div>';
+      }
+      
+      resultsContainer.innerHTML = resultsHTML;
+      resultsContainer.style.display = 'block';
+    }
+    
+    function showJobError(data) {
+      const errorContainer = document.getElementById('job-error');
+      if (!errorContainer) return;
+      
+      let errorHTML = '<h3>❌ Extraction Failed</h3>';
+      errorHTML += '<p>We encountered an error while processing your request:</p>';
+      errorHTML += '<div class="error-details">' + data.error_message + '</div>';
+      
+      errorContainer.innerHTML = errorHTML;
+      errorContainer.style.display = 'block';
+    }
+    
+    function pollJobStatus() {
+      fetch(`/jobs/${jobId}/status`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            console.error('Job not found:', data.error);
+            clearInterval(pollTimer);
+            return;
+          }
+          updateJobStatus(data);
+        })
+        .catch(error => {
+          console.error('Error polling job status:', error);
+          // Continue polling even on error
+        });
+    }
+    
+    // Start polling immediately and then every 2 seconds
+    pollJobStatus();
+    pollTimer = setInterval(pollJobStatus, pollInterval);
+  });
+</script>
+<% end %>
