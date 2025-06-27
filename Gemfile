@@ -20,6 +20,10 @@ gem "jbuilder"
 # Money handling for currency formatting
 gem "money-rails"
 
+# AI integration and HTTP requests
+gem "ruby-openai"
+gem "httparty"
+
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 # gem "bcrypt", "~> 3.1.7"
 
