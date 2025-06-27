@@ -163,8 +163,10 @@ RSpec.describe "Homes", type: :request do
 
       it "includes product data when job is completed" do
         product = create(:product, name: "Test Product")
-        variant = create(:product_variant, product: product, name: "Test Variant", 
-                        price_cents: 1299, quantity_numeric: 1.0, quantity_text: "1 piece")
+        variant1 = create(:product_variant, product: product, name: "Small Size", 
+                          price_cents: 1299, quantity_numeric: 1.0, quantity_text: "1 piece")
+        variant2 = create(:product_variant, product: product, name: "Large Size", 
+                          price_cents: 2399, quantity_numeric: 2.0, quantity_text: "2 pieces")
         result_data = { 'processing_time' => 3.5 }
         
         completed_job = create(:extraction_job, :completed, product: product, result_data: result_data)
@@ -177,9 +179,29 @@ RSpec.describe "Homes", type: :request do
         expect(json_response['finished']).to eq(true)
         expect(json_response['product']).to be_present
         expect(json_response['product']['name']).to eq("Test Product")
-        expect(json_response['product']['variants_count']).to eq(1)
+        expect(json_response['product']['variants_count']).to eq(2)
         expect(json_response['product']['best_value_variant']).to be_present
         expect(json_response['processing_time']).to eq(3.5)
+        
+        # Test enhanced data structures
+        expect(json_response['product']['variants']).to be_present
+        expect(json_response['product']['variants'].length).to eq(2)
+        expect(json_response['product']['price_range']).to be_present
+        expect(json_response['product']['value_analysis']).to be_present
+        
+        # Test detailed variant data
+        variant_data = json_response['product']['variants'].first
+        expect(variant_data).to include('id', 'name', 'price_display', 'quantity_text', 
+                                       'price_per_unit_display', 'is_best_value', 'value_rank')
+        
+        # Test price range data
+        price_range = json_response['product']['price_range']
+        expect(price_range).to include('min_price_display', 'max_price_display', 'price_spread_display')
+        
+        # Test value analysis data
+        value_analysis = json_response['product']['value_analysis']
+        expect(value_analysis).to include('best_value_display', 'worst_value_display', 
+                                        'max_savings_display', 'max_savings_percentage')
       end
 
       it "includes error message when job failed" do
@@ -272,6 +294,87 @@ RSpec.describe "Homes", type: :request do
         expect(response.body).not_to include("data-job-id=")
         expect(response.body).to include("AI Product Comparison Tool")
         expect(response.body).to include("extraction-form-container")
+      end
+    end
+  end
+
+  describe "GET /jobs/:id/export" do
+    let(:product) { create(:product, name: "Test Export Product") }
+    let(:completed_job) { create(:extraction_job, :completed, product: product) }
+    
+    before do
+      create(:product_variant, product: product, name: "Variant 1", 
+             price_cents: 1000, quantity_numeric: 1.0, quantity_text: "1 piece")
+      create(:product_variant, product: product, name: "Variant 2", 
+             price_cents: 2000, quantity_numeric: 2.0, quantity_text: "2 pieces")
+    end
+
+    context "with completed job" do
+      it "exports CSV format" do
+        get export_results_path(completed_job.id, format: 'csv')
+        
+        expect(response).to have_http_status(:ok)
+        expect(response.content_type).to include('text/csv')
+        expect(response.headers['Content-Disposition']).to include('attachment')
+        expect(response.headers['Content-Disposition']).to include('.csv')
+        
+        csv_content = response.body
+        expect(csv_content).to include('Variant Name')
+        expect(csv_content).to include('Variant 1')
+        expect(csv_content).to include('Variant 2')
+        expect(csv_content).to include('$10.00')
+        expect(csv_content).to include('$20.00')
+      end
+
+      it "exports JSON format" do
+        get export_results_path(completed_job.id, format: 'json')
+        
+        expect(response).to have_http_status(:ok)
+        expect(response.content_type).to include('application/json')
+        expect(response.headers['Content-Disposition']).to include('attachment')
+        expect(response.headers['Content-Disposition']).to include('.json')
+        
+        json_content = JSON.parse(response.body)
+        expect(json_content).to have_key('extraction_job')
+        expect(json_content).to have_key('product')
+        expect(json_content['product']).to have_key('variants')
+        expect(json_content['product']['variants'].length).to eq(2)
+      end
+
+      it "defaults to CSV when no format specified" do
+        get export_results_path(completed_job.id)
+        
+        expect(response).to have_http_status(:ok)
+        expect(response.content_type).to include('text/csv')
+      end
+    end
+
+    context "with incomplete job" do
+      let(:processing_job) { create(:extraction_job, :processing) }
+
+      it "redirects with error for processing job" do
+        get export_results_path(processing_job.id)
+        
+        expect(response).to redirect_to(root_path)
+        expect(flash[:alert]).to eq('Results not available for export')
+      end
+    end
+
+    context "with invalid job ID" do
+      it "redirects with error for non-existent job" do
+        get export_results_path(99999)
+        
+        expect(response).to redirect_to(root_path)
+        expect(flash[:alert]).to eq('Job not found')
+      end
+    end
+
+    context "with invalid format" do
+      it "redirects with error for unsupported format" do
+        get export_results_path(completed_job.id, format: 'xml')
+        
+        expect(response).to redirect_to(root_path)
+        expect(flash[:alert]).to eq('Invalid export format')
       end
     end
   end

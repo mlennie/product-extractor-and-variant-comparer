@@ -515,6 +515,278 @@
       padding: 1.5rem;
     }
   }
+
+  /* Enhanced Results Styling */
+  .results-header {
+    margin-bottom: 2rem;
+  }
+
+  .results-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+  }
+
+  .summary-item {
+    color: #475569;
+    font-size: 0.9rem;
+  }
+
+  .export-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .export-btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+  }
+
+  .csv-btn {
+    background: #10b981;
+    color: white;
+  }
+
+  .csv-btn:hover {
+    background: #059669;
+    transform: translateY(-1px);
+  }
+
+  .json-btn {
+    background: #3b82f6;
+    color: white;
+  }
+
+  .json-btn:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+  }
+
+  .share-btn {
+    background: #8b5cf6;
+    color: white;
+  }
+
+  .share-btn:hover {
+    background: #7c3aed;
+    transform: translateY(-1px);
+  }
+
+  /* Value Analysis Styling */
+  .value-analysis {
+    margin: 2rem 0;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #fef7cd 0%, #fbbf24 100%);
+    border-radius: 12px;
+    border: 2px solid #f59e0b;
+  }
+
+  .value-analysis h4 {
+    color: #92400e;
+    margin-bottom: 1rem;
+    font-size: 1.125rem;
+  }
+
+  .analysis-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+
+  .analysis-item {
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+    font-size: 0.875rem;
+  }
+
+  .analysis-item.best {
+    border-left: 4px solid #10b981;
+  }
+
+  .analysis-item.worst {
+    border-left: 4px solid #ef4444;
+  }
+
+  .analysis-item.savings {
+    border-left: 4px solid #3b82f6;
+  }
+
+  .analysis-item.count {
+    border-left: 4px solid #8b5cf6;
+  }
+
+  /* Variants Table Styling */
+  .variants-section {
+    margin: 2rem 0;
+  }
+
+  .variants-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .variants-header h4 {
+    color: #1e293b;
+    margin: 0;
+    font-size: 1.125rem;
+  }
+
+  .table-controls label {
+    color: #475569;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .table-controls select {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.875rem;
+  }
+
+  .table-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  .variants-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+
+  .variants-table thead {
+    background: #f9fafb;
+  }
+
+  .variants-table th {
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .variants-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: top;
+  }
+
+  .variants-table tbody tr:hover {
+    background: #f9fafb;
+  }
+
+  .variants-table tr.best-value {
+    background: #ecfdf5;
+    border-left: 4px solid #10b981;
+  }
+
+  .variants-table tr.best-value:hover {
+    background: #d1fae5;
+  }
+
+  .variant-name {
+    min-width: 150px;
+  }
+
+  .variant-name strong {
+    display: block;
+    color: #1f2937;
+    margin-bottom: 0.25rem;
+  }
+
+  .best-badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    padding: 0.125rem 0.5rem;
+    background: #10b981;
+    color: white;
+    border-radius: 12px;
+    font-weight: 500;
+  }
+
+  .price, .price-per-unit {
+    font-weight: 600;
+    color: #059669;
+  }
+
+  .rank {
+    font-weight: 600;
+    color: #3b82f6;
+  }
+
+  .savings {
+    color: #7c3aed;
+    font-weight: 500;
+  }
+
+  /* Enhanced Responsive Design */
+  @media (max-width: 768px) {
+    .results-summary {
+      grid-template-columns: 1fr;
+    }
+    
+    .export-actions {
+      flex-direction: column;
+    }
+    
+    .export-btn {
+      text-align: center;
+    }
+    
+    .analysis-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .variants-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .table-controls {
+      text-align: center;
+    }
+    
+    .variants-table {
+      font-size: 0.8rem;
+    }
+    
+    .variants-table th,
+    .variants-table td {
+      padding: 0.5rem 0.25rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .variants-table th:nth-child(3),
+    .variants-table td:nth-child(3) {
+      display: none; /* Hide quantity column on very small screens */
+    }
+  }
 </style>
 
 <% if @tracking_job %>
@@ -582,23 +854,154 @@
       const resultsContainer = document.getElementById('job-results');
       if (!resultsContainer) return;
       
-      let resultsHTML = '<h3>🎉 Product Data Successfully Extracted!</h3>';
-      resultsHTML += '<div class="result-item"><strong>Product Name:</strong> <span>' + data.product.name + '</span></div>';
-      resultsHTML += '<div class="result-item"><strong>Variants Found:</strong> <span>' + data.product.variants_count + ' variants</span></div>';
-      
-      if (data.product.best_value_variant) {
-        resultsHTML += '<div class="result-item"><strong>Best Value:</strong> <span>' + 
-          data.product.best_value_variant.name + ' - ' + 
-          data.product.best_value_variant.price_per_unit_display + 
-          '</span></div>';
-      }
+      let resultsHTML = '<div class="results-header">';
+      resultsHTML += '<h3>🎉 Product Data Successfully Extracted!</h3>';
+      resultsHTML += '<div class="results-summary">';
+      resultsHTML += '<div class="summary-item"><strong>Product:</strong> ' + data.product.name + '</div>';
+      resultsHTML += '<div class="summary-item"><strong>Variants Found:</strong> ' + data.product.variants_count + '</div>';
       
       if (data.processing_time) {
-        resultsHTML += '<div class="result-item"><strong>Processing Time:</strong> <span>' + data.processing_time + ' seconds</span></div>';
+        resultsHTML += '<div class="summary-item"><strong>Processing Time:</strong> ' + data.processing_time + 's</div>';
+      }
+      resultsHTML += '</div>';
+      
+      // Export buttons
+      resultsHTML += '<div class="export-actions">';
+      resultsHTML += '<button onclick="exportResults(\'' + data.id + '\', \'csv\')" class="export-btn csv-btn">📊 Export CSV</button>';
+      resultsHTML += '<button onclick="exportResults(\'' + data.id + '\', \'json\')" class="export-btn json-btn">📄 Export JSON</button>';
+      resultsHTML += '<button onclick="shareResults(\'' + data.id + '\')" class="export-btn share-btn">🔗 Share Results</button>';
+      resultsHTML += '</div>';
+      resultsHTML += '</div>';
+      
+      // Value Analysis Summary
+      if (data.product.value_analysis) {
+        const analysis = data.product.value_analysis;
+        resultsHTML += '<div class="value-analysis">';
+        resultsHTML += '<h4>💰 Value Analysis</h4>';
+        resultsHTML += '<div class="analysis-grid">';
+        resultsHTML += '<div class="analysis-item best"><strong>Best Value:</strong> ' + analysis.best_value_display + '</div>';
+        resultsHTML += '<div class="analysis-item worst"><strong>Worst Value:</strong> ' + analysis.worst_value_display + '</div>';
+        resultsHTML += '<div class="analysis-item savings"><strong>Max Savings:</strong> ' + analysis.max_savings_display + ' (' + analysis.max_savings_percentage + '%)</div>';
+        resultsHTML += '<div class="analysis-item count"><strong>Variants with Savings:</strong> ' + analysis.variants_with_savings + '</div>';
+        resultsHTML += '</div>';
+        resultsHTML += '</div>';
+      }
+      
+      // Detailed Variants Table
+      if (data.product.variants && data.product.variants.length > 0) {
+        resultsHTML += '<div class="variants-section">';
+        resultsHTML += '<div class="variants-header">';
+        resultsHTML += '<h4>📋 Product Variants</h4>';
+        resultsHTML += '<div class="table-controls">';
+        resultsHTML += '<label>Sort by: <select id="sort-select" onchange="sortTable(this.value)">';
+        resultsHTML += '<option value="value_rank">Value Rank</option>';
+        resultsHTML += '<option value="price_cents">Price (Low to High)</option>';
+        resultsHTML += '<option value="price_cents_desc">Price (High to Low)</option>';
+        resultsHTML += '<option value="name">Name</option>';
+        resultsHTML += '</select></label>';
+        resultsHTML += '</div>';
+        resultsHTML += '</div>';
+        
+        resultsHTML += '<div class="table-container">';
+        resultsHTML += '<table class="variants-table" id="variants-table">';
+        resultsHTML += '<thead>';
+        resultsHTML += '<tr>';
+        resultsHTML += '<th>Variant</th>';
+        resultsHTML += '<th>Price</th>';
+        resultsHTML += '<th>Quantity</th>';
+        resultsHTML += '<th>Price/Unit</th>';
+        resultsHTML += '<th>Rank</th>';
+        resultsHTML += '<th>Savings</th>';
+        resultsHTML += '</tr>';
+        resultsHTML += '</thead>';
+        resultsHTML += '<tbody id="variants-tbody">';
+        
+        // Store variants data globally for sorting
+        window.variantsData = data.product.variants;
+        
+        resultsHTML += generateVariantRows(data.product.variants);
+        resultsHTML += '</tbody>';
+        resultsHTML += '</table>';
+        resultsHTML += '</div>';
+        resultsHTML += '</div>';
       }
       
       resultsContainer.innerHTML = resultsHTML;
       resultsContainer.style.display = 'block';
+    }
+    
+    function generateVariantRows(variants) {
+      return variants.map(variant => {
+        const bestValueClass = variant.is_best_value ? 'best-value' : '';
+        const savings = variant.savings_vs_worst;
+        const savingsDisplay = savings ? `${savings.savings_display} (${savings.savings_percentage}%)` : 'N/A';
+        const rankDisplay = variant.value_rank || 'N/A';
+        
+        return `
+          <tr class="${bestValueClass}" data-variant-id="${variant.id}">
+            <td class="variant-name">
+              <strong>${variant.name}</strong>
+              ${variant.is_best_value ? '<span class="best-badge">🏆 Best Value</span>' : ''}
+            </td>
+            <td class="price">${variant.price_display}</td>
+            <td class="quantity">${variant.quantity_text}</td>
+            <td class="price-per-unit">${variant.price_per_unit_display}</td>
+            <td class="rank">${rankDisplay}</td>
+            <td class="savings">${savingsDisplay}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+    
+    function sortTable(sortBy) {
+      if (!window.variantsData) return;
+      
+      let sortedVariants = [...window.variantsData];
+      
+      switch(sortBy) {
+        case 'value_rank':
+          sortedVariants.sort((a, b) => (a.value_rank || 999) - (b.value_rank || 999));
+          break;
+        case 'price_cents':
+          sortedVariants.sort((a, b) => a.price_cents - b.price_cents);
+          break;
+        case 'price_cents_desc':
+          sortedVariants.sort((a, b) => b.price_cents - a.price_cents);
+          break;
+        case 'name':
+          sortedVariants.sort((a, b) => a.name.localeCompare(b.name));
+          break;
+      }
+      
+      const tbody = document.getElementById('variants-tbody');
+      if (tbody) {
+        tbody.innerHTML = generateVariantRows(sortedVariants);
+      }
+    }
+    
+    function exportResults(jobId, format) {
+      const url = `/jobs/${jobId}/export?format=${format}`;
+      window.open(url, '_blank');
+    }
+    
+    function shareResults(jobId) {
+      const shareUrl = `${window.location.origin}/?job_id=${jobId}`;
+      
+      if (navigator.share) {
+        navigator.share({
+          title: 'Product Comparison Results',
+          text: 'Check out these product variant analysis results',
+          url: shareUrl
+        }).catch(err => console.log('Error sharing:', err));
+      } else {
+        // Fallback to copying to clipboard
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          alert('Results link copied to clipboard!');
+        }).catch(err => {
+          // Final fallback - show URL in prompt
+          prompt('Copy this link to share results:', shareUrl);
+        });
+      }
     }
     
     function showJobError(data) {
