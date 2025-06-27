@@ -2,6 +2,8 @@
 
 A Rails 8 application that extracts and compares product variants from any product page URL using AI. Users can submit product URLs and get real-time analysis of pricing, quantities, and best value recommendations.
 
+https://www.loom.com/share/732a143ddf034df58cbd70d0b41185cf
+
 ## 🎯 Overview
 
 This tool helps users compare products across different suppliers or listings based on quantity and pricing. Submit a product page URL, and the system uses OpenAI's AI to extract structured data representing multiple product variants (e.g., "30 tablets", "100 tablets") along with their respective prices, automatically calculating the best value options.
