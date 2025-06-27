@@ -442,7 +442,7 @@ RSpec.describe "Homes", type: :request do
         expect(response).to redirect_to(root_path(job_id: ExtractionJob.last.id))
         follow_redirect!
         
-        expect(response.body).to include("🔄 Updating existing product data for this URL")
+        expect(response.body).to include("Updating existing product data for this URL")
         expect(response.body).to include("Previous data will be replaced with fresh results")
       end
     end
@@ -454,8 +454,98 @@ RSpec.describe "Homes", type: :request do
         expect(response).to redirect_to(root_path(job_id: ExtractionJob.last.id))
         follow_redirect!
         
-        expect(response.body).to include("✅ Product extraction started!")
+        expect(response.body).to include("Product extraction started!")
         expect(response.body).not_to include("Updating existing product")
+      end
+    end
+  end
+
+  describe "POST /products/:id/update" do
+    context "when product exists" do
+      let!(:product) { create(:product, name: "Test Product", url: "https://example.com/product") }
+
+      it "creates a new extraction job for the product" do
+        expect {
+          post "/products/#{product.id}/update"
+        }.to change(ExtractionJob, :count).by(1)
+
+        extraction_job = ExtractionJob.last
+        expect(extraction_job.url).to eq(product.url)
+        expect(extraction_job.status).to eq('queued')
+        expect(extraction_job.progress).to eq(0)
+      end
+
+      it "enqueues a background job" do
+        expect {
+          post "/products/#{product.id}/update"
+        }.to have_enqueued_job(ProductExtractionJob)
+      end
+
+      it "redirects to root with job_id parameter" do
+        post "/products/#{product.id}/update"
+        
+        extraction_job = ExtractionJob.last
+        expect(response).to redirect_to(root_path(job_id: extraction_job.id))
+      end
+
+      it "sets appropriate flash message" do
+        post "/products/#{product.id}/update"
+        
+        expect(flash[:info]).to include("Manual update started for #{product.name}")
+        expect(flash[:info]).to include("Fresh data will replace existing product information")
+      end
+    end
+
+    context "when product does not exist" do
+      it "redirects to root path" do
+        post "/products/999/update"
+        
+        expect(response).to redirect_to(root_path)
+      end
+
+      it "sets error flash message" do
+        post "/products/999/update"
+        
+        expect(flash[:error]).to eq("Product not found")
+      end
+
+      it "does not create extraction job" do
+        expect {
+          post "/products/999/update"
+        }.not_to change(ExtractionJob, :count)
+      end
+    end
+
+    context "when extraction job creation fails" do
+      let!(:product) { create(:product, name: "Test Product", url: "https://example.com/product") }
+
+      before do
+        allow(ExtractionJob).to receive(:create!).and_raise(
+          ActiveRecord::RecordInvalid.new(ExtractionJob.new.tap { |ej| ej.errors.add(:url, "is invalid") })
+        )
+      end
+
+      it "redirects back with error message" do
+        post "/products/#{product.id}/update"
+        
+        expect(response).to redirect_to(root_path)
+        expect(flash[:error]).to include("Failed to start manual update")
+        expect(flash[:error]).to include("is invalid")
+      end
+    end
+
+    context "when unexpected error occurs" do
+      let!(:product) { create(:product, name: "Test Product", url: "https://example.com/product") }
+
+      before do
+        allow(ProductExtractionJob).to receive(:perform_later).and_raise(StandardError.new("Unexpected error"))
+      end
+
+      it "handles error gracefully" do
+        post "/products/#{product.id}/update"
+        
+        expect(response).to redirect_to(root_path)
+        expect(flash[:error]).to include("An unexpected error occurred")
       end
     end
   end

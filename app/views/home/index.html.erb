@@ -982,6 +982,23 @@
   .update-notice strong {
     color: #78350f;
   }
+
+  .export-btn.share-btn {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    border-color: #7c3aed;
+  }
+
+  .export-btn.update-btn {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    border-color: #d97706;
+  }
+
+  .export-btn.update-btn:hover {
+    background: linear-gradient(135deg, #d97706, #b45309);
+    border-color: #b45309;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(217, 119, 6, 0.3);
+  }
 </style>
 
 <% if @tracking_job %>
@@ -1044,6 +1061,29 @@
   
   function retryExtraction() {
     window.location.reload();
+  }
+  
+  function manualUpdate(productId) {
+    if (confirm('This will start a new extraction job to update the product data. The current data will be replaced with fresh results. Continue?')) {
+      // Create a form to submit the POST request
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = `/products/${productId}/update`;
+      
+      // Add CSRF token
+      const csrfToken = document.querySelector('meta[name="csrf-token"]');
+      if (csrfToken) {
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'authenticity_token';
+        csrfInput.value = csrfToken.content;
+        form.appendChild(csrfInput);
+      }
+      
+      // Submit the form
+      document.body.appendChild(form);
+      form.submit();
+    }
   }
   
   function reportIssue(jobId) {

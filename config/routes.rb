@@ -16,6 +16,7 @@ Rails.application.routes.draw do
   # Product extraction routes
   post "extract", to: "home#create"
   post "check_url", to: "home#check_url"
+  post "products/:id/update", to: "home#manual_update", as: :manual_update_product
   get "jobs/:id/status", to: "home#job_status", as: :job_status
   get "jobs/:id/export", to: "home#export_results", as: :export_results
 end

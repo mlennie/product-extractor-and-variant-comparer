@@ -40,11 +40,11 @@ class HomeController < ApplicationController
       # Enqueue background job for processing
       ProductExtractionJob.perform_later(extraction_job.id)
       
-      # Set appropriate flash message based on whether this is an update or new extraction
+      # Set flash message based on whether product exists
       if existing_product
-        flash[:info] = "🔄 Updating existing product data for this URL. Previous data will be replaced with fresh results."
+        flash[:info] = "Updating existing product data for this URL. Previous data will be replaced with fresh results."
       else
-        flash[:success] = "✅ Product extraction started! Processing your URL now."
+        flash[:success] = "Product extraction started! Processing your URL now."
       end
       
       # Redirect to home page with job ID for real-time tracking
@@ -153,6 +153,42 @@ class HomeController < ApplicationController
     
   rescue ActiveRecord::RecordNotFound
     redirect_to root_path, alert: 'Job not found'
+  end
+
+  # Manual update trigger for existing products
+  def manual_update
+    @product = Product.find(params[:id])
+    
+    begin
+      # Create new extraction job for the existing product's URL
+      extraction_job = ExtractionJob.create!(
+        url: @product.url,
+        status: 'queued',
+        progress: 0
+      )
+      
+      # Enqueue background job for processing
+      ProductExtractionJob.perform_later(extraction_job.id)
+      
+      # Set flash message indicating manual update
+      flash[:info] = "Manual update started for #{@product.name}. Fresh data will replace existing product information."
+      
+      # Redirect to tracking page
+      redirect_to root_path(job_id: extraction_job.id)
+      
+    rescue ActiveRecord::RecordInvalid => e
+      flash[:error] = "Failed to start manual update: #{e.record.errors.full_messages.join(', ')}"
+      redirect_back(fallback_location: root_path)
+      
+    rescue => e
+      Rails.logger.error "Error starting manual update for product #{@product.id}: #{e.message}"
+      flash[:error] = "An unexpected error occurred while starting the manual update. Please try again."
+      redirect_back(fallback_location: root_path)
+    end
+    
+  rescue ActiveRecord::RecordNotFound
+    flash[:error] = "Product not found"
+    redirect_to root_path
   end
 
   private

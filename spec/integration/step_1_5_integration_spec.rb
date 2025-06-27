@@ -304,4 +304,168 @@ RSpec.describe "Step 1.5 - Enhanced Results Display & User Experience Integratio
       expect(response.body).to include('name')
     end
   end
+
+  describe "Manual product update flow" do
+    let!(:product) { create(:product, name: "Manual Update Product", url: "https://example.com/manual-update") }
+    
+    before do
+      # Create existing variants for the product
+      create(:product_variant, product: product, name: "Old Variant 1", 
+             price_cents: 5999, quantity_numeric: 1.0, quantity_text: "1 unit")
+      create(:product_variant, product: product, name: "Old Variant 2", 
+             price_cents: 9999, quantity_numeric: 1.0, quantity_text: "1 unit")
+    end
+
+    it "allows manual update of existing products" do
+      # Start with 2 existing variants
+      expect(product.product_variants.count).to eq(2)
+      
+      # Mock the WebPageFetcher to return HTML content
+      allow_any_instance_of(WebPageFetcher).to receive(:fetch).and_return({
+        success: true,
+        content: '<html><body>Mock product page content</body></html>',
+        url: product.url,
+        status_code: 200,
+        response_time: 1.5,
+        errors: []
+      })
+      
+      # Mock the AI extraction to return new data
+      allow_any_instance_of(AiContentExtractor).to receive(:extract_product_data).and_return({
+        success: true,
+        data: {
+          'product' => {
+            'name' => 'Updated Manual Product',
+            'description' => 'Updated product description'
+          },
+          'variants' => [
+            {
+              'name' => 'New Variant 1',
+              'price_cents' => 7999,
+              'quantity_text' => '1 piece',
+              'quantity_numeric' => 1.0,
+              'currency' => 'USD'
+            },
+            {
+              'name' => 'New Variant 2', 
+              'price_cents' => 14999,
+              'quantity_text' => '2 pieces',
+              'quantity_numeric' => 2.0,
+              'currency' => 'USD'
+            },
+            {
+              'name' => 'New Variant 3',
+              'price_cents' => 19999,
+              'quantity_text' => '3 pieces',
+              'quantity_numeric' => 3.0,
+              'currency' => 'USD'
+            }
+          ]
+        },
+        raw_response: 'Mocked AI response',
+        url: product.url,
+        model_used: 'gpt-3.5-turbo',
+        response_time: 2.1,
+        errors: []
+      })
+      
+      # Trigger manual update
+      expect {
+        post "/products/#{product.id}/update"
+      }.to change(ExtractionJob, :count).by(1)
+      
+      # Get the created extraction job
+      extraction_job = ExtractionJob.last
+      expect(extraction_job.url).to eq(product.url)
+      expect(extraction_job.status).to eq('queued')
+      
+      # Process the job
+      ProductExtractionJob.new.perform(extraction_job.id)
+      
+      # Verify the extraction job completed successfully
+      extraction_job.reload
+      expect(extraction_job.status).to eq('completed')
+      expect(extraction_job.error_message).to be_nil
+      
+      # Verify the product was updated (not duplicated)
+      expect(Product.where(url: "https://example.com/manual-update").count).to eq(1)
+      
+      # Verify old variants were replaced with new ones
+      product.reload
+      expect(product.name).to eq('Updated Manual Product')
+      expect(product.product_variants.count).to eq(3)
+      
+      # Verify the new variant data
+      variant_names = product.product_variants.pluck(:name)
+      expect(variant_names).to include('New Variant 1', 'New Variant 2', 'New Variant 3')
+      expect(variant_names).not_to include('Old Variant 1', 'Old Variant 2')
+      
+      # Verify pricing was parsed correctly
+      variant_1 = product.product_variants.find_by(name: 'New Variant 1')
+      expect(variant_1.price_cents).to eq(7999)
+      expect(variant_1.quantity_text).to eq('1 piece')
+      expect(variant_1.quantity_numeric).to eq(1.0)
+    end
+
+    it "handles manual update errors gracefully" do
+      # Mock the WebPageFetcher first 
+      allow_any_instance_of(WebPageFetcher).to receive(:fetch).and_return({
+        success: true,
+        content: '<html><body>Mock product page content</body></html>',
+        url: product.url,
+        status_code: 200,
+        response_time: 1.5,
+        errors: []
+      })
+      
+      # Mock the AI extraction to fail
+      allow_any_instance_of(AiContentExtractor).to receive(:extract_product_data).and_return({
+        success: false,
+        data: nil,
+        raw_response: nil,
+        url: product.url,
+        model_used: 'gpt-3.5-turbo',
+        response_time: 1.0,
+        errors: ['Service unavailable']
+      })
+      
+      # Trigger manual update
+      post "/products/#{product.id}/update"
+      extraction_job = ExtractionJob.last
+      
+      # Process the job (which should fail)
+      ProductExtractionJob.new.perform(extraction_job.id)
+      
+      # Verify the job failed appropriately
+      extraction_job.reload
+      expect(extraction_job.status).to eq('failed')
+      expect(extraction_job.error_message).to include('Service unavailable')
+      
+      # Verify original product data is preserved
+      product.reload
+      expect(product.product_variants.count).to eq(2)
+      expect(product.product_variants.pluck(:name)).to include('Old Variant 1', 'Old Variant 2')
+    end
+
+    it "includes manual update button in results display" do
+      # Create a completed extraction job with results
+      completed_job = create(:extraction_job, :completed, product: product, 
+                           result_data: { 'processing_time' => 2.5 })
+      
+      # Visit the results page
+      get "/?job_id=#{completed_job.id}"
+      
+      # Check that the page includes the job tracker
+      expect(response.body).to include('data-controller="job-tracker"')
+      expect(response.body).to include('data-job-tracker-job-id-value')
+      
+      # The manual update button is added via JavaScript in the JobTracker controller
+      # We can verify the JavaScript function exists and the job has product data for the button
+      expect(response.body).to include('function manualUpdate(productId)')
+      expect(response.body).to include("data-job-tracker-job-id-value=\"#{completed_job.id}\"")
+      
+      # Verify the completed job has associated product data (required for manual update)
+      expect(completed_job.product).to be_present
+    end
+  end
 end 

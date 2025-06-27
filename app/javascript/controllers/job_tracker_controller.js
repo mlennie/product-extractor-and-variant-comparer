@@ -165,6 +165,7 @@ export default class extends Controller {
     html += `<button onclick="exportResults('${data.id}', 'csv')" class="export-btn csv-btn">📊 Export CSV</button>`
     html += `<button onclick="exportResults('${data.id}', 'json')" class="export-btn json-btn">📄 Export JSON</button>`
     html += `<button onclick="shareResults('${data.id}')" class="export-btn share-btn">🔗 Share Results</button>`
+    html += `<button onclick="manualUpdate('${data.product.id}')" class="export-btn update-btn">🔄 Update Product Data</button>`
     html += '</div>'
     html += '</div>'
     
