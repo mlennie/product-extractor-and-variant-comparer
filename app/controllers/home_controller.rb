@@ -49,7 +49,7 @@ class HomeController < ApplicationController
   end
 
   def job_status
-    @extraction_job = ExtractionJob.find(params[:id])
+    @extraction_job = ExtractionJob.includes(product: :product_variants).find(params[:id])
     
     # Build response data
     response_data = {
@@ -89,7 +89,7 @@ class HomeController < ApplicationController
   end
 
   def export_results
-    @extraction_job = ExtractionJob.find(params[:id])
+    @extraction_job = ExtractionJob.includes(product: :product_variants).find(params[:id])
     
     unless @extraction_job.completed? && @extraction_job.product
       redirect_to root_path, alert: 'Results not available for export'
