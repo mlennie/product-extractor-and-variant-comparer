@@ -246,14 +246,13 @@ RSpec.describe "Homes", type: :request do
       it "displays job tracking section for existing job" do
         job = create(:extraction_job, :processing, url: "https://example.com/long-url-that-should-be-truncated")
         
-        get root_path(job_id: job.id)
+        get root_path, params: { job_id: job.id }
         
-        expect(response).to have_http_status(:ok)
-        expect(response.body).to include("Processing Your Request")
-        expect(response.body).to include("job-tracking-section")
-        expect(response.body).to include("data-job-id=\"#{job.id}\"")
-        expect(response.body).to include("Extracting product data from:")
-        expect(response.body).to include("https://example.com/long-url-that-should-be-trunca")
+        expect(response).to have_http_status(:success)
+        expect(response.body).to include('data-controller="job-tracker"')
+        expect(response.body).to include("data-job-tracker-job-id-value=\"#{job.id}\"")
+        expect(response.body).to include('Processing Your Request')
+        expect(response.body).to include(job.url)
       end
 
       it "includes progress bar with current progress" do

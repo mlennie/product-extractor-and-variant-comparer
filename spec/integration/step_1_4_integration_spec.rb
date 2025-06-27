@@ -17,7 +17,8 @@ RSpec.describe "Step 1.4 - Real-time Progress Updates Integration", type: :reque
       
       # Verify tracking section is displayed
       expect(response.body).to include("job-tracking-section")
-      expect(response.body).to include("data-job-id=\"#{job.id}\"")
+      expect(response.body).to include('data-controller="job-tracker"')
+      expect(response.body).to include("data-job-tracker-job-id-value=\"#{job.id}\"")
       expect(response.body).to include("Processing Your Request")
       expect(response.body).to include("https://example.com/test-product")
       

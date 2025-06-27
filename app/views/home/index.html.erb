@@ -21,35 +21,38 @@
   </div>
 
   <% if @tracking_job %>
-    <div class="job-tracking-section" data-job-id="<%= @tracking_job.id %>">
+    <div class="job-tracking-section"
+         data-controller="job-tracker"
+         data-job-tracker-job-id-value="<%= @tracking_job.id %>"
+         data-job-tracker-poll-interval-value="2000">
       <div class="tracking-header">
-        <h2>🔄 Processing Your Request</h2>
+        <h2 data-job-tracker-target="header">🔄 Processing Your Request</h2>
         <p>Extracting product data from: <strong><%= truncate(@tracking_job.url, length: 60) %></strong></p>
       </div>
       
       <div class="job-status-container">
         <div class="progress-bar-container">
           <div class="progress-bar" id="progress-bar">
-            <div class="progress-fill" id="progress-fill" style="width: <%= @tracking_job.progress %>%"></div>
+            <div class="progress-fill" data-job-tracker-target="progressFill" style="width: <%= @tracking_job.progress %>%"></div>
           </div>
-          <div class="progress-text" id="progress-text"><%= @tracking_job.progress_display %></div>
+          <div class="progress-text" data-job-tracker-target="progressText"><%= @tracking_job.progress_display %></div>
         </div>
         
         <div class="status-info">
-          <div class="status-badge" id="status-badge" data-status="<%= @tracking_job.status %>">
-            <span class="status-icon" id="status-icon">⏳</span>
-            <span class="status-text" id="status-text"><%= @tracking_job.status_display %></span>
+          <div class="status-badge" data-job-tracker-target="statusBadge" data-status="<%= @tracking_job.status %>">
+            <span class="status-icon" data-job-tracker-target="statusIcon">⏳</span>
+            <span class="status-text" data-job-tracker-target="statusText"><%= @tracking_job.status_display %></span>
           </div>
           <div class="job-time">Started at <%= @tracking_job.created_at.strftime('%I:%M %p') %></div>
         </div>
       </div>
       
-      <div class="job-results" id="job-results" style="display: none;">
-        <!-- Results will be populated by JavaScript -->
+      <div class="job-results" data-job-tracker-target="results" style="display: none;">
+        <!-- Results will be populated by Stimulus controller -->
       </div>
       
-      <div class="job-error" id="job-error" style="display: none;">
-        <!-- Error details will be populated by JavaScript -->
+      <div class="job-error" data-job-tracker-target="error" style="display: none;">
+        <!-- Error details will be populated by Stimulus controller -->
       </div>
     </div>
   <% end %>
@@ -866,335 +869,72 @@
 </style>
 
 <% if @tracking_job %>
+<!-- JavaScript now handled by JobTracker Stimulus controller -->
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const jobId = document.querySelector('.job-tracking-section').dataset.jobId;
-    const pollInterval = 2000; // Poll every 2 seconds
-    let pollTimer;
+  // Global helper functions for the Stimulus controller
+  function exportResults(jobId, format) {
+    const url = `/jobs/${jobId}/export?format=${format}`;
+    window.open(url, '_blank');
+  }
+  
+  function shareResults(jobId) {
+    const shareUrl = `${window.location.origin}/?job_id=${jobId}`;
     
-    // Status icons mapping
-    const statusIcons = {
-      'queued': '⏳',
-      'processing': '🔄',
-      'completed': '✅',
-      'failed': '❌'
-    };
+    if (navigator.share) {
+      navigator.share({
+        title: 'Product Comparison Results',
+        text: 'Check out these product variant analysis results',
+        url: shareUrl
+      }).catch(err => console.log('Error sharing:', err));
+    } else {
+      // Fallback to copying to clipboard
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        alert('Results link copied to clipboard!');
+      }).catch(err => {
+        // Final fallback - show URL in prompt
+        prompt('Copy this link to share results:', shareUrl);
+      });
+    }
+  }
+  
+  function sortTable(sortBy) {
+    if (!window.variantsData) return;
     
-    function updateJobStatus(data) {
-      // Update progress bar
-      const progressFill = document.getElementById('progress-fill');
-      const progressText = document.getElementById('progress-text');
-      if (progressFill && progressText) {
-        progressFill.style.width = data.progress + '%';
-        progressText.textContent = data.progress_display;
-      }
-      
-      // Update status badge
-      const statusBadge = document.getElementById('status-badge');
-      const statusIcon = document.getElementById('status-icon');
-      const statusText = document.getElementById('status-text');
-      
-      if (statusBadge && statusIcon && statusText) {
-        statusBadge.setAttribute('data-status', data.status);
-        statusIcon.textContent = statusIcons[data.status] || '⏳';
-        statusText.textContent = data.status_display;
-      }
-      
-      // Show results if completed
-      if (data.status === 'completed' && data.product) {
-        showJobResults(data);
-      }
-      
-      // Show error if failed
-      if (data.status === 'failed' && data.error_message) {
-        showJobError(data);
-      }
-      
-      // Stop polling if job is finished
-      if (data.finished) {
-        clearInterval(pollTimer);
-        
-        // Update header to show completion
-        const header = document.querySelector('.tracking-header h2');
-        if (header) {
-          if (data.status === 'completed') {
-            header.textContent = '✅ Extraction Complete!';
-          } else if (data.status === 'failed') {
-            header.textContent = '❌ Extraction Failed';
-          }
-        }
-      }
+    let sortedVariants = [...window.variantsData];
+    
+    switch(sortBy) {
+      case 'value_rank':
+        sortedVariants.sort((a, b) => (a.value_rank || 999) - (b.value_rank || 999));
+        break;
+      case 'price_cents':
+        sortedVariants.sort((a, b) => a.price_cents - b.price_cents);
+        break;
+      case 'price_cents_desc':
+        sortedVariants.sort((a, b) => b.price_cents - a.price_cents);
+        break;
+      case 'name':
+        sortedVariants.sort((a, b) => a.name.localeCompare(b.name));
+        break;
     }
     
-    function showJobResults(data) {
-      const resultsContainer = document.getElementById('job-results');
-      if (!resultsContainer) return;
-      
-      let resultsHTML = '<div class="results-header">';
-      resultsHTML += '<h3>🎉 Product Data Successfully Extracted!</h3>';
-      resultsHTML += '<div class="results-summary">';
-      resultsHTML += '<div class="summary-item"><strong>Product:</strong> ' + data.product.name + '</div>';
-      resultsHTML += '<div class="summary-item"><strong>Variants Found:</strong> ' + data.product.variants_count + '</div>';
-      
-      if (data.processing_time) {
-        resultsHTML += '<div class="summary-item"><strong>Processing Time:</strong> ' + data.processing_time + 's</div>';
-      }
-      resultsHTML += '</div>';
-      
-      // Export buttons
-      resultsHTML += '<div class="export-actions">';
-      resultsHTML += '<button onclick="exportResults(\'' + data.id + '\', \'csv\')" class="export-btn csv-btn">📊 Export CSV</button>';
-      resultsHTML += '<button onclick="exportResults(\'' + data.id + '\', \'json\')" class="export-btn json-btn">📄 Export JSON</button>';
-      resultsHTML += '<button onclick="shareResults(\'' + data.id + '\')" class="export-btn share-btn">🔗 Share Results</button>';
-      resultsHTML += '</div>';
-      resultsHTML += '</div>';
-      
-      // Value Analysis Summary
-      if (data.product.value_analysis) {
-        const analysis = data.product.value_analysis;
-        resultsHTML += '<div class="value-analysis">';
-        resultsHTML += '<h4>💰 Value Analysis</h4>';
-        resultsHTML += '<div class="analysis-grid">';
-        resultsHTML += '<div class="analysis-item best"><strong>Best Value:</strong> ' + analysis.best_value_display + '</div>';
-        resultsHTML += '<div class="analysis-item worst"><strong>Worst Value:</strong> ' + analysis.worst_value_display + '</div>';
-        resultsHTML += '<div class="analysis-item savings"><strong>Max Savings:</strong> ' + analysis.max_savings_display + ' (' + analysis.max_savings_percentage + '%)</div>';
-        resultsHTML += '<div class="analysis-item count"><strong>Variants with Savings:</strong> ' + analysis.variants_with_savings + '</div>';
-        resultsHTML += '</div>';
-        resultsHTML += '</div>';
-      }
-      
-      // Detailed Variants Table
-      if (data.product.variants && data.product.variants.length > 0) {
-        resultsHTML += '<div class="variants-section">';
-        resultsHTML += '<div class="variants-header">';
-        resultsHTML += '<h4>📋 Product Variants</h4>';
-        resultsHTML += '<div class="table-controls">';
-        resultsHTML += '<label>Sort by: <select id="sort-select" onchange="sortTable(this.value)">';
-        resultsHTML += '<option value="value_rank">Value Rank</option>';
-        resultsHTML += '<option value="price_cents">Price (Low to High)</option>';
-        resultsHTML += '<option value="price_cents_desc">Price (High to Low)</option>';
-        resultsHTML += '<option value="name">Name</option>';
-        resultsHTML += '</select></label>';
-        resultsHTML += '</div>';
-        resultsHTML += '</div>';
-        
-        resultsHTML += '<div class="table-container">';
-        resultsHTML += '<table class="variants-table" id="variants-table">';
-        resultsHTML += '<thead>';
-        resultsHTML += '<tr>';
-        resultsHTML += '<th>Variant</th>';
-        resultsHTML += '<th>Price</th>';
-        resultsHTML += '<th>Quantity</th>';
-        resultsHTML += '<th>Price/Unit</th>';
-        resultsHTML += '<th>Rank</th>';
-        resultsHTML += '<th>Savings</th>';
-        resultsHTML += '</tr>';
-        resultsHTML += '</thead>';
-        resultsHTML += '<tbody id="variants-tbody">';
-        
-        // Store variants data globally for sorting
-        window.variantsData = data.product.variants;
-        
-        resultsHTML += generateVariantRows(data.product.variants);
-        resultsHTML += '</tbody>';
-        resultsHTML += '</table>';
-        resultsHTML += '</div>';
-        resultsHTML += '</div>';
-      }
-      
-      resultsContainer.innerHTML = resultsHTML;
-      resultsContainer.style.display = 'block';
-    }
-    
-    function generateVariantRows(variants) {
-      return variants.map(variant => {
-        const bestValueClass = variant.is_best_value ? 'best-value' : '';
-        const savings = variant.savings_vs_worst;
-        const savingsDisplay = savings ? `${savings.savings_display} (${savings.savings_percentage}%)` : 'N/A';
-        const rankDisplay = variant.value_rank || 'N/A';
-        
-        return `
-          <tr class="${bestValueClass}" data-variant-id="${variant.id}">
-            <td class="variant-name">
-              <strong>${variant.name}</strong>
-              ${variant.is_best_value ? '<span class="best-badge">🏆 Best Value</span>' : ''}
-            </td>
-            <td class="price">${variant.price_display}</td>
-            <td class="quantity">${variant.quantity_text}</td>
-            <td class="price-per-unit">${variant.price_per_unit_display}</td>
-            <td class="rank">${rankDisplay}</td>
-            <td class="savings">${savingsDisplay}</td>
-          </tr>
-        `;
-      }).join('');
-    }
-    
-    function sortTable(sortBy) {
-      if (!window.variantsData) return;
-      
-      let sortedVariants = [...window.variantsData];
-      
-      switch(sortBy) {
-        case 'value_rank':
-          sortedVariants.sort((a, b) => (a.value_rank || 999) - (b.value_rank || 999));
-          break;
-        case 'price_cents':
-          sortedVariants.sort((a, b) => a.price_cents - b.price_cents);
-          break;
-        case 'price_cents_desc':
-          sortedVariants.sort((a, b) => b.price_cents - a.price_cents);
-          break;
-        case 'name':
-          sortedVariants.sort((a, b) => a.name.localeCompare(b.name));
-          break;
-      }
-      
-      const tbody = document.getElementById('variants-tbody');
-      if (tbody) {
-        tbody.innerHTML = generateVariantRows(sortedVariants);
+    const tbody = document.getElementById('variants-tbody');
+    if (tbody) {
+      const controller = document.querySelector('[data-controller="job-tracker"]');
+      if (controller && controller.controller) {
+        tbody.innerHTML = controller.controller.generateVariantRows(sortedVariants);
       }
     }
-    
-    function exportResults(jobId, format) {
-      const url = `/jobs/${jobId}/export?format=${format}`;
-      window.open(url, '_blank');
-    }
-    
-    function shareResults(jobId) {
-      const shareUrl = `${window.location.origin}/?job_id=${jobId}`;
-      
-      if (navigator.share) {
-        navigator.share({
-          title: 'Product Comparison Results',
-          text: 'Check out these product variant analysis results',
-          url: shareUrl
-        }).catch(err => console.log('Error sharing:', err));
-      } else {
-        // Fallback to copying to clipboard
-        navigator.clipboard.writeText(shareUrl).then(() => {
-          alert('Results link copied to clipboard!');
-        }).catch(err => {
-          // Final fallback - show URL in prompt
-          prompt('Copy this link to share results:', shareUrl);
-        });
-      }
-    }
-    
-    function showJobError(data) {
-      const errorContainer = document.getElementById('job-error');
-      if (!errorContainer) return;
-      
-      // Hide results container if visible
-      const resultsContainer = document.getElementById('job-results');
-      if (resultsContainer) {
-        resultsContainer.style.display = 'none';
-      }
-      
-      let errorHTML = '<h3>❌ Extraction Failed</h3>';
-      errorHTML += '<p>We encountered an error while processing your request:</p>';
-      
-      // More user-friendly error messages
-      let userFriendlyMessage = getUserFriendlyErrorMessage(data.error_message);
-      errorHTML += '<div class="error-message">' + userFriendlyMessage + '</div>';
-      
-      if (data.error_message) {
-        errorHTML += '<details class="technical-details">';
-        errorHTML += '<summary>Technical Details</summary>';
-        errorHTML += '<div class="error-details">' + data.error_message + '</div>';
-        errorHTML += '</details>';
-      }
-      
-      // Add retry action
-      errorHTML += '<div class="error-actions">';
-      errorHTML += '<button onclick="retryExtraction()" class="btn btn-retry">🔄 Try Again</button>';
-      errorHTML += '<button onclick="reportIssue(\'' + data.id + '\')" class="btn btn-secondary">📋 Report Issue</button>';
-      errorHTML += '</div>';
-      
-      errorContainer.innerHTML = errorHTML;
-      errorContainer.style.display = 'block';
-    }
-    
-    function getUserFriendlyErrorMessage(technicalError) {
-      if (!technicalError) return 'An unknown error occurred.';
-      
-      const errorLower = technicalError.toLowerCase();
-      
-      if (errorLower.includes('403') || errorLower.includes('forbidden')) {
-        return '🚫 <strong>Access Blocked:</strong> The website is blocking automated requests. This is common for sites with anti-bot protection. Try a different product URL from a site like Target, Walmart, or a smaller retailer.';
-      } else if (errorLower.includes('404') || errorLower.includes('not found')) {
-        return '🔍 <strong>Page Not Found:</strong> The product page could not be found. Please check that the URL is correct and the product still exists.';
-      } else if (errorLower.includes('timeout') || errorLower.includes('timed out')) {
-        return '⏱️ <strong>Request Timeout:</strong> The website took too long to respond. This might be a temporary issue - please try again.';
-      } else if (errorLower.includes('connection') || errorLower.includes('network')) {
-        return '🌐 <strong>Connection Error:</strong> Unable to connect to the website. Please check the URL and try again.';
-      } else if (errorLower.includes('rate limit') || errorLower.includes('too many requests')) {
-        return '🚦 <strong>Rate Limited:</strong> Too many requests have been made. Please wait a few minutes before trying again.';
-      } else if (errorLower.includes('ssl') || errorLower.includes('certificate')) {
-        return '🔒 <strong>Security Error:</strong> There\'s an issue with the website\'s security certificate. Try a different URL.';
-      } else if (errorLower.includes('parsing') || errorLower.includes('extract')) {
-        return '📄 <strong>Content Error:</strong> Unable to extract product information from this page. The page might not contain product data or might be in an unsupported format.';
-      } else {
-        return '❗ <strong>Processing Error:</strong> Something went wrong while extracting the product data. Please try again or contact support if the issue persists.';
-      }
-    }
-    
-    function retryExtraction() {
-      // Hide error container
-      const errorContainer = document.getElementById('job-error');
-      if (errorContainer) {
-        errorContainer.style.display = 'none';
-      }
-      
-      // Reset the form and allow user to try again
-      window.location.reload();
-    }
-    
-    function reportIssue(jobId) {
-      const reportData = {
-        job_id: jobId,
-        timestamp: new Date().toISOString(),
-        user_agent: navigator.userAgent,
-        url: window.location.href
-      };
-      
-      const subject = encodeURIComponent('Product Extraction Error Report');
-      const body = encodeURIComponent(`Hello,
-
-I encountered an error while extracting product data:
-
-Job ID: ${jobId}
-Time: ${new Date().toLocaleString()}
-Page: ${window.location.href}
-
-Please investigate this issue.
-
-Technical Details:
-${JSON.stringify(reportData, null, 2)}`);
-      
-      const mailtoLink = `mailto:support@productcompare.com?subject=${subject}&body=${body}`;
-      window.open(mailtoLink);
-    }
-    
-    function pollJobStatus() {
-      fetch(`/jobs/${jobId}/status`)
-        .then(response => response.json())
-        .then(data => {
-          if (data.error) {
-            console.error('Job not found:', data.error);
-            clearInterval(pollTimer);
-            return;
-          }
-          updateJobStatus(data);
-        })
-        .catch(error => {
-          console.error('Error polling job status:', error);
-          // Continue polling even on error
-        });
-    }
-    
-    // Start polling immediately and then every 2 seconds
-    pollJobStatus();
-    pollTimer = setInterval(pollJobStatus, pollInterval);
-  });
+  }
+  
+  function retryExtraction() {
+    window.location.reload();
+  }
+  
+  function reportIssue(jobId) {
+    const subject = encodeURIComponent('Product Extraction Issue - Job ' + jobId);
+    const body = encodeURIComponent('I encountered an issue with product extraction.\n\nJob ID: ' + jobId + '\nURL: ' + window.location.href + '\n\nPlease describe the issue:');
+    const mailtoUrl = 'mailto:support@example.com?subject=' + subject + '&body=' + body;
+    window.open(mailtoUrl);
+  }
 </script>
 <% end %>
