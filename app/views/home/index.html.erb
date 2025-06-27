@@ -1,2 +1,1096 @@
-<h1>Home#index</h1>
-<p>Find me in app/views/home/index.html.erb</p>
+<div class="home-container">
+  <% if flash[:success] %>
+    <div class="flash-message flash-success">
+      <div class="flash-icon">✅</div>
+      <div class="flash-content"><%= flash[:success] %></div>
+    </div>
+  <% end %>
+
+  <% if flash[:error] %>
+    <div class="flash-message flash-error">
+      <div class="flash-icon">❌</div>
+      <div class="flash-content"><%= flash[:error] %></div>
+    </div>
+  <% end %>
+
+  <% if flash[:info] %>
+    <div class="flash-message flash-info">
+      <div class="flash-icon">🔄</div>
+      <div class="flash-content"><%= flash[:info] %></div>
+    </div>
+  <% end %>
+
+  <div class="hero-section">
+    <h1 class="app-title">AI Product Comparison Tool</h1>
+    <p class="app-description">
+      Extract product data from any URL and compare prices, variants, and find the best value automatically using AI.
+    </p>
+  </div>
+
+  <% if @tracking_job %>
+    <div class="job-tracking-section"
+         data-controller="job-tracker"
+         data-job-tracker-job-id-value="<%= @tracking_job.id %>"
+         data-job-tracker-poll-interval-value="2000">
+      <div class="tracking-header">
+        <h2 data-job-tracker-target="header">🔄 Processing Your Request</h2>
+        <p>Extracting product data from: <strong><%= truncate(@tracking_job.url, length: 60) %></strong></p>
+      </div>
+      
+      <div class="job-status-container">
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="progress-bar">
+            <div class="progress-fill" data-job-tracker-target="progressFill" style="width: <%= @tracking_job.progress %>%"></div>
+          </div>
+          <div class="progress-text" data-job-tracker-target="progressText"><%= @tracking_job.progress_display %></div>
+        </div>
+        
+        <div class="status-info">
+          <div class="status-badge" data-job-tracker-target="statusBadge" data-status="<%= @tracking_job.status %>">
+            <span class="status-icon" data-job-tracker-target="statusIcon">⏳</span>
+            <span class="status-text" data-job-tracker-target="statusText"><%= @tracking_job.status_display %></span>
+          </div>
+          <div class="job-time">Started at <%= @tracking_job.created_at.strftime('%I:%M %p') %></div>
+        </div>
+      </div>
+      
+      <div class="job-results" data-job-tracker-target="results" style="display: none;">
+        <!-- Results will be populated by Stimulus controller -->
+      </div>
+      
+      <div class="job-error" data-job-tracker-target="error" style="display: none;">
+        <!-- Error details will be populated by Stimulus controller -->
+      </div>
+    </div>
+  <% end %>
+
+  <div class="extraction-form-container">
+    <%= form_with url: extract_path, local: true, class: "extraction-form", id: "product-extraction-form", data: { controller: "url-checker" } do |form| %>
+      <div class="form-group">
+        <%= form.label :url, "Product URL", class: "form-label" %>
+        <%= form.url_field :url, 
+            placeholder: "https://example.com/product", 
+            class: "form-input",
+            required: true,
+            pattern: "https?://.+",
+            title: "Please enter a valid URL starting with http:// or https://",
+            data: { 
+              url_checker_target: "urlInput",
+              action: "input->url-checker#checkUrl"
+            } %>
+        <div class="form-help">
+          Enter the URL of any product page (Amazon, Target, etc.)
+        </div>
+      </div>
+
+      <!-- Existing Product Information Section -->
+      <div class="existing-product-info" data-url-checker-target="existingInfo" style="display: none;">
+        <div class="info-header">
+          <div class="info-icon">📦</div>
+          <h3>Existing Product Found</h3>
+        </div>
+        <div class="info-content" data-url-checker-target="existingContent">
+          <!-- Content will be populated by JavaScript -->
+        </div>
+        <div class="info-actions">
+          <p class="update-notice">
+            <strong>Note:</strong> Submitting this URL will update the existing product with fresh data. 
+            All previous variants will be replaced with newly extracted information.
+          </p>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <%= form.submit "Extract Product Data", 
+            class: "btn btn-primary btn-large",
+            data: { 
+              disable_with: "🔄 Extracting...",
+              confirm: false,
+              url_checker_target: "submitButton"
+            } %>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="features-section">
+    <div class="feature-grid">
+      <div class="feature-item">
+        <div class="feature-icon">🤖</div>
+        <h3>AI-Powered</h3>
+        <p>Advanced AI extracts product details, variants, and pricing automatically</p>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">💰</div>
+        <h3>Best Value Analysis</h3>
+        <p>Automatically calculates price-per-unit and identifies the best deals</p>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">⚡</div>
+        <h3>Real-time Processing</h3>
+        <p>Fast extraction with live progress updates and instant results</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .home-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  /* Flash Messages */
+  .flash-message {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    margin-bottom: 2rem;
+    border-radius: 8px;
+    border: 1px solid;
+    animation: slideIn 0.3s ease-out;
+  }
+
+  .flash-success {
+    background-color: #f0fdf4;
+    border-color: #bbf7d0;
+    color: #166534;
+  }
+
+  .flash-error {
+    background-color: #fef2f2;
+    border-color: #fecaca;
+    color: #dc2626;
+  }
+
+  .flash-info {
+    background-color: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1d4ed8;
+  }
+
+  .flash-icon {
+    margin-right: 0.75rem;
+    font-size: 1.25rem;
+  }
+
+  .flash-content {
+    font-weight: 500;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .hero-section {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+
+  .app-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+  }
+
+  .app-description {
+    font-size: 1.125rem;
+    color: #6b7280;
+    line-height: 1.6;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .extraction-form-container {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    margin-bottom: 3rem;
+  }
+
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+
+  .form-label {
+    display: block;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+  }
+
+  .form-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .form-input:invalid {
+    border-color: #ef4444;
+  }
+
+  .form-help {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-top: 0.5rem;
+  }
+
+  .form-actions {
+    text-align: center;
+  }
+
+  .btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 1rem;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(59, 130, 246, 0.3);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+
+  .btn-large {
+    padding: 1rem 2rem;
+    font-size: 1.125rem;
+    font-weight: 700;
+  }
+
+  .btn-update {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    border-color: #d97706;
+  }
+
+  .btn-update:hover {
+    background: linear-gradient(135deg, #d97706, #b45309);
+    border-color: #b45309;
+    transform: translateY(-1px);
+  }
+
+  .features-section {
+    margin-top: 4rem;
+  }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+  }
+
+  .feature-item {
+    text-align: center;
+    padding: 1.5rem;
+    background: #f9fafb;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+  }
+
+  .feature-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .feature-item h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+  }
+
+  .feature-item p {
+    color: #6b7280;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .home-container {
+      padding: 1rem;
+    }
+
+    .app-title {
+      font-size: 2rem;
+    }
+
+    .extraction-form-container {
+      padding: 1.5rem;
+    }
+
+    .feature-grid {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+  }
+
+  /* Loading State */
+  .btn[data-disable-with] {
+    position: relative;
+  }
+
+  .btn[disabled] {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  /* Job Tracking Styles */
+  .job-tracking-section {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 3rem;
+    border: 2px solid #cbd5e1;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  .tracking-header h2 {
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+
+  .tracking-header p {
+    color: #64748b;
+    margin-bottom: 1.5rem;
+    word-break: break-all;
+  }
+
+  .job-status-container {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .progress-bar-container {
+    flex: 1;
+  }
+
+  .progress-bar {
+    width: 100%;
+    height: 12px;
+    background: #e2e8f0;
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+    margin-bottom: 0.5rem;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6 0%, #06b6d4 100%);
+    border-radius: 6px;
+    transition: width 0.5s ease;
+    position: relative;
+  }
+
+  .progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .progress-text {
+    text-align: center;
+    font-weight: 600;
+    color: #475569;
+    font-size: 0.875rem;
+  }
+
+  .status-info {
+    text-align: right;
+  }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+  }
+
+  .status-badge[data-status="queued"] {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .status-badge[data-status="processing"] {
+    background: #dbeafe;
+    color: #1e40af;
+    animation: pulse 2s infinite;
+  }
+
+  .status-badge[data-status="completed"] {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .status-badge[data-status="failed"] {
+    background: #fee2e2;
+    color: #dc2626;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  .status-icon {
+    font-size: 1.125rem;
+  }
+
+  .job-time {
+    font-size: 0.75rem;
+    color: #64748b;
+  }
+
+  .job-results {
+    background: #f0f9ff;
+    border: 1px solid #0ea5e9;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-top: 1rem;
+  }
+
+  .job-results h3 {
+    color: #0c4a6e;
+    margin-bottom: 1rem;
+    font-size: 1.125rem;
+  }
+
+  .result-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e0f2fe;
+  }
+
+  .result-item:last-child {
+    border-bottom: none;
+  }
+
+  .job-error {
+    background: #fef2f2;
+    border: 1px solid #f87171;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-top: 1rem;
+    animation: slideIn 0.3s ease-out;
+  }
+
+  .job-error h3 {
+    color: #dc2626;
+    margin-bottom: 1rem;
+    font-size: 1.125rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .error-message {
+    color: #7f1d1d;
+    background: #fee2e2;
+    padding: 1rem;
+    border-radius: 6px;
+    margin: 1rem 0;
+    border-left: 4px solid #dc2626;
+    line-height: 1.5;
+  }
+
+  .technical-details {
+    margin: 1rem 0;
+    border: 1px solid #fca5a5;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .technical-details summary {
+    background: #fee2e2;
+    padding: 0.75rem;
+    cursor: pointer;
+    font-weight: 600;
+    color: #7f1d1d;
+    border-bottom: 1px solid #fca5a5;
+  }
+
+  .technical-details summary:hover {
+    background: #fecaca;
+  }
+
+  .error-details {
+    color: #7f1d1d;
+    font-family: monospace;
+    font-size: 0.875rem;
+    background: #fef2f2;
+    padding: 0.75rem;
+    word-break: break-all;
+    border: none;
+    margin: 0;
+  }
+
+  .error-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-retry {
+    background: #dc2626;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-retry:hover {
+    background: #b91c1c;
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary {
+    background: #6b7280;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-secondary:hover {
+    background: #4b5563;
+    transform: translateY(-1px);
+  }
+
+  /* Responsive Job Tracking */
+  @media (max-width: 768px) {
+    .job-status-container {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+    
+    .status-info {
+      text-align: left;
+    }
+    
+    .job-tracking-section {
+      padding: 1.5rem;
+    }
+  }
+
+  /* Enhanced Results Styling */
+  .results-header {
+    margin-bottom: 2rem;
+  }
+
+  .results-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+  }
+
+  .summary-item {
+    color: #475569;
+    font-size: 0.9rem;
+  }
+
+  .export-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .export-btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+  }
+
+  .csv-btn {
+    background: #10b981;
+    color: white;
+  }
+
+  .csv-btn:hover {
+    background: #059669;
+    transform: translateY(-1px);
+  }
+
+  .json-btn {
+    background: #3b82f6;
+    color: white;
+  }
+
+  .json-btn:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+  }
+
+  .share-btn {
+    background: #8b5cf6;
+    color: white;
+  }
+
+  .share-btn:hover {
+    background: #7c3aed;
+    transform: translateY(-1px);
+  }
+
+  /* Value Analysis Styling */
+  .value-analysis {
+    margin: 2rem 0;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #fef7cd 0%, #fbbf24 100%);
+    border-radius: 12px;
+    border: 2px solid #f59e0b;
+  }
+
+  .value-analysis h4 {
+    color: #92400e;
+    margin-bottom: 1rem;
+    font-size: 1.125rem;
+  }
+
+  .analysis-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+
+  .analysis-item {
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+    font-size: 0.875rem;
+  }
+
+  .analysis-item.best {
+    border-left: 4px solid #10b981;
+  }
+
+  .analysis-item.worst {
+    border-left: 4px solid #ef4444;
+  }
+
+  .analysis-item.savings {
+    border-left: 4px solid #3b82f6;
+  }
+
+  .analysis-item.count {
+    border-left: 4px solid #8b5cf6;
+  }
+
+  /* Variants Table Styling */
+  .variants-section {
+    margin: 2rem 0;
+  }
+
+  .variants-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .variants-header h4 {
+    color: #1e293b;
+    margin: 0;
+    font-size: 1.125rem;
+  }
+
+  .table-controls label {
+    color: #475569;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .table-controls select {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.875rem;
+  }
+
+  .table-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  .variants-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+
+  .variants-table thead {
+    background: #f9fafb;
+  }
+
+  .variants-table th {
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .variants-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: top;
+  }
+
+  .variants-table tbody tr:hover {
+    background: #f9fafb;
+  }
+
+  .variants-table tr.best-value {
+    background: #ecfdf5;
+    border-left: 4px solid #10b981;
+  }
+
+  .variants-table tr.best-value:hover {
+    background: #d1fae5;
+  }
+
+  .variant-name {
+    min-width: 150px;
+  }
+
+  .variant-name strong {
+    display: block;
+    color: #1f2937;
+    margin-bottom: 0.25rem;
+  }
+
+  .best-badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    padding: 0.125rem 0.5rem;
+    background: #10b981;
+    color: white;
+    border-radius: 12px;
+    font-weight: 500;
+  }
+
+  .price, .price-per-unit {
+    font-weight: 600;
+    color: #059669;
+  }
+
+  .rank {
+    font-weight: 600;
+    color: #3b82f6;
+  }
+
+  .savings {
+    color: #7c3aed;
+    font-weight: 500;
+  }
+
+  /* Enhanced Responsive Design */
+  @media (max-width: 768px) {
+    .results-summary {
+      grid-template-columns: 1fr;
+    }
+    
+    .export-actions {
+      flex-direction: column;
+    }
+    
+    .export-btn {
+      text-align: center;
+    }
+    
+    .analysis-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .variants-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .table-controls {
+      text-align: center;
+    }
+    
+    .variants-table {
+      font-size: 0.8rem;
+    }
+    
+    .variants-table th,
+    .variants-table td {
+      padding: 0.5rem 0.25rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .variants-table th:nth-child(3),
+    .variants-table td:nth-child(3) {
+      display: none; /* Hide quantity column on very small screens */
+    }
+  }
+  
+  /* Existing Product Information Styles */
+  .existing-product-info {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+  }
+
+  .info-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .info-icon {
+    font-size: 1.5rem;
+    margin-right: 0.75rem;
+  }
+
+  .info-header h3 {
+    color: #92400e;
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .info-content {
+    background: #fffbeb;
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #fed7aa;
+  }
+
+  .info-row:last-child {
+    border-bottom: none;
+  }
+
+  .info-label {
+    font-weight: 600;
+    color: #92400e;
+  }
+
+  .info-value {
+    color: #451a03;
+  }
+
+  .update-notice {
+    background: #fef3c7;
+    border: 1px solid #fbbf24;
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin: 0;
+    font-size: 0.875rem;
+    color: #92400e;
+  }
+
+  .update-notice strong {
+    color: #78350f;
+  }
+
+  .export-btn.share-btn {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    border-color: #7c3aed;
+  }
+
+  .export-btn.update-btn {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    border-color: #d97706;
+  }
+
+  .export-btn.update-btn:hover {
+    background: linear-gradient(135deg, #d97706, #b45309);
+    border-color: #b45309;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(217, 119, 6, 0.3);
+  }
+</style>
+
+<% if @tracking_job %>
+<!-- JavaScript now handled by JobTracker Stimulus controller -->
+<script>
+  // Global helper functions for the Stimulus controller
+  function exportResults(jobId, format) {
+    const url = `/jobs/${jobId}/export?format=${format}`;
+    window.open(url, '_blank');
+  }
+  
+  function shareResults(jobId) {
+    const shareUrl = `${window.location.origin}/?job_id=${jobId}`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: 'Product Comparison Results',
+        text: 'Check out these product variant analysis results',
+        url: shareUrl
+      }).catch(err => console.log('Error sharing:', err));
+    } else {
+      // Fallback to copying to clipboard
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        alert('Results link copied to clipboard!');
+      }).catch(err => {
+        // Final fallback - show URL in prompt
+        prompt('Copy this link to share results:', shareUrl);
+      });
+    }
+  }
+  
+  function sortTable(sortBy) {
+    if (!window.variantsData) return;
+    
+    let sortedVariants = [...window.variantsData];
+    
+    switch(sortBy) {
+      case 'value_rank':
+        sortedVariants.sort((a, b) => (a.value_rank || 999) - (b.value_rank || 999));
+        break;
+      case 'price_cents':
+        sortedVariants.sort((a, b) => a.price_cents - b.price_cents);
+        break;
+      case 'price_cents_desc':
+        sortedVariants.sort((a, b) => b.price_cents - a.price_cents);
+        break;
+      case 'name':
+        sortedVariants.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+    }
+    
+    const tbody = document.getElementById('variants-tbody');
+    if (tbody) {
+      const controller = document.querySelector('[data-controller="job-tracker"]');
+      if (controller && controller.controller) {
+        tbody.innerHTML = controller.controller.generateVariantRows(sortedVariants);
+      }
+    }
+  }
+  
+  function retryExtraction() {
+    window.location.reload();
+  }
+  
+  function manualUpdate(productId) {
+    if (confirm('This will start a new extraction job to update the product data. The current data will be replaced with fresh results. Continue?')) {
+      // Create a form to submit the POST request
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = `/products/${productId}/update`;
+      
+      // Add CSRF token
+      const csrfToken = document.querySelector('meta[name="csrf-token"]');
+      if (csrfToken) {
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'authenticity_token';
+        csrfInput.value = csrfToken.content;
+        form.appendChild(csrfInput);
+      }
+      
+      // Submit the form
+      document.body.appendChild(form);
+      form.submit();
+    }
+  }
+  
+  function reportIssue(jobId) {
+    const subject = encodeURIComponent('Product Extraction Issue - Job ' + jobId);
+    const body = encodeURIComponent('I encountered an issue with product extraction.\n\nJob ID: ' + jobId + '\nURL: ' + window.location.href + '\n\nPlease describe the issue:');
+    const mailtoUrl = 'mailto:support@example.com?subject=' + subject + '&body=' + body;
+    window.open(mailtoUrl);
+  }
+</script>
+<% end %>

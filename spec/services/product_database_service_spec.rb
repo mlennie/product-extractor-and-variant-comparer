@@ -104,6 +104,125 @@ RSpec.describe ProductDatabaseService do
         # Verify old variants were removed
         expect(Product.find(first_product_id).product_variants.count).to eq(1)
       end
+
+      it 'completely replaces existing variants when URL is reprocessed' do
+        # Initial product with 3 variants - using same structure as valid_extracted_data
+        initial_data = valid_extracted_data.deep_dup
+        initial_data['product']['name'] = 'Original Test Product'
+        initial_data['variants'] = [
+          {
+            'name' => 'Original Small',
+            'quantity_text' => '8 oz',
+            'quantity_numeric' => 8.0,
+            'price_cents' => 199,
+            'currency' => 'USD'
+          },
+          {
+            'name' => 'Original Medium',
+            'quantity_text' => '12 oz', 
+            'quantity_numeric' => 12.0,
+            'price_cents' => 299,
+            'currency' => 'USD'
+          },
+          {
+            'name' => 'Original Large',
+            'quantity_text' => '16 oz',
+            'quantity_numeric' => 16.0,
+            'price_cents' => 399,
+            'currency' => 'USD'
+          }
+        ]
+        
+        # Create initial product
+        first_result = service.save_product_data(initial_data, sample_url)
+        expect(first_result[:success]).to be true
+        expect(first_result[:errors]).to be_empty
+        
+        first_product = first_result[:product]
+        first_product.reload # Ensure fresh data
+        initial_variant_ids = first_product.product_variants.pluck(:id)
+        expect(first_product.product_variants.count).to eq(3)
+        expect(first_product.product_variants.pluck(:name)).to match_array(['Original Small', 'Original Medium', 'Original Large'])
+        
+        # Update with completely different variants
+        updated_data = valid_extracted_data.deep_dup
+        updated_data['product']['name'] = 'Updated Test Product'
+        updated_data['variants'] = [
+          {
+            'name' => 'New Size A',
+            'quantity_text' => '10 oz',
+            'quantity_numeric' => 10.0,
+            'price_cents' => 249,
+            'currency' => 'USD'
+          },
+          {
+            'name' => 'New Size B',
+            'quantity_text' => '20 oz',
+            'quantity_numeric' => 20.0,
+            'price_cents' => 449,
+            'currency' => 'USD'
+          }
+        ]
+        
+        # Process update
+        second_result = service.save_product_data(updated_data, sample_url)
+        expect(second_result[:success]).to be true
+        expect(second_result[:errors]).to be_empty
+        
+        # Verify same product updated (not new product created)
+        updated_product = second_result[:product]
+        updated_product.reload # Ensure fresh data
+        expect(updated_product.id).to eq(first_product.id)
+        expect(Product.where(url: sample_url).count).to eq(1)
+        
+        # Verify product attributes updated
+        expect(updated_product.name).to eq('Updated Test Product')
+        
+        # Verify variants completely replaced
+        expect(updated_product.product_variants.count).to eq(2)
+        expect(updated_product.product_variants.pluck(:name)).to match_array(['New Size A', 'New Size B'])
+        
+        # Verify old variants completely removed from database
+        expect(ProductVariant.where(id: initial_variant_ids)).to be_empty
+        
+        # Verify new variants have correct data
+        new_size_a = updated_product.product_variants.find_by(name: 'New Size A')
+        expect(new_size_a.quantity_text).to eq('10 oz')
+        expect(new_size_a.price_cents).to eq(249)
+        
+        new_size_b = updated_product.product_variants.find_by(name: 'New Size B')
+        expect(new_size_b.quantity_text).to eq('20 oz')
+        expect(new_size_b.price_cents).to eq(449)
+      end
+      
+      it 'maintains URL uniqueness constraint during updates' do
+        # Create first product
+        first_result = service.save_product_data(valid_extracted_data, sample_url)
+        expect(first_result[:success]).to be true
+        first_product_id = first_result[:product].id
+        
+        # Create second product with different URL
+        second_url = 'https://example.com/different-product'
+        second_result = service.save_product_data(valid_extracted_data, second_url)
+        expect(second_result[:success]).to be true
+        second_product_id = second_result[:product].id
+        
+        # Verify we have 2 different products
+        expect(first_product_id).not_to eq(second_product_id)
+        expect(Product.count).to eq(2)
+        
+        # Update first product with same URL
+        updated_data = valid_extracted_data.deep_dup
+        updated_data['product']['name'] = 'Updated First Product'
+        
+        third_result = service.save_product_data(updated_data, sample_url)
+        expect(third_result[:success]).to be true
+        
+        # Should still have only 2 products (first one updated, not duplicated)
+        expect(Product.count).to eq(2)
+        expect(third_result[:product].id).to eq(first_product_id)
+        expect(third_result[:product].name).to eq('Updated First Product')
+      end
     end
 
     context 'with invalid data' do

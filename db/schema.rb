@@ -10,9 +10,23 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_06_27_162717) do
+ActiveRecord::Schema[8.0].define(version: 2025_06_27_182424) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "extraction_jobs", force: :cascade do |t|
+    t.string "url", null: false
+    t.string "status", default: "queued", null: false
+    t.integer "progress", default: 0, null: false
+    t.json "result_data"
+    t.text "error_message"
+    t.bigint "product_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_extraction_jobs_on_created_at"
+    t.index ["product_id"], name: "index_extraction_jobs_on_product_id"
+    t.index ["status"], name: "index_extraction_jobs_on_status"
+  end
 
   create_table "product_variants", force: :cascade do |t|
     t.bigint "product_id", null: false
@@ -45,5 +59,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_27_162717) do
     t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'processing'::character varying, 'completed'::character varying, 'failed'::character varying]::text[])", name: "valid_status"
   end
 
+  add_foreign_key "extraction_jobs", "products"
   add_foreign_key "product_variants", "products"
 end
