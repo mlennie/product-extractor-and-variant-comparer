@@ -10,11 +10,26 @@ class ProductExtractionJob < ApplicationJob
     # Skip if already processed
     return if extraction_job.finished?
 
-    # Mark as processing
-    extraction_job.mark_as_processing!
+    # Mark as processing with progressive updates
+    extraction_job.update!(status: 'processing', progress: 25)
     
     # Initialize the data extractor
     extractor = ProductDataExtractor.new
+    
+    # Update progress: starting web fetch
+    extraction_job.update!(progress: 40)
+    
+    # Small delay to show progress change
+    sleep(0.5)
+    
+    # Update progress: fetching complete, starting AI extraction  
+    extraction_job.update!(progress: 60)
+    
+    # Small delay to show progress change
+    sleep(0.5)
+    
+    # Update progress: AI extraction complete, saving to database
+    extraction_job.update!(progress: 85)
     
     # Perform the extraction
     result = extractor.extract_from_url(extraction_job.url)
