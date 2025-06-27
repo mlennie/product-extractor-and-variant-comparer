@@ -3,6 +3,11 @@ class HomeController < ApplicationController
     if params[:job_id].present?
       @tracking_job = ExtractionJob.find_by(id: params[:job_id])
     end
+    
+    # Check for existing product if URL is provided
+    if params[:url].present?
+      @existing_product = Product.find_by(url: params[:url])
+    end
   end
 
   def create
@@ -21,6 +26,9 @@ class HomeController < ApplicationController
       return
     end
 
+    # Check if this URL already has a product
+    existing_product = Product.find_by(url: @url)
+    
     begin
       # Create extraction job record
       extraction_job = ExtractionJob.create!(
@@ -31,6 +39,13 @@ class HomeController < ApplicationController
       
       # Enqueue background job for processing
       ProductExtractionJob.perform_later(extraction_job.id)
+      
+      # Set appropriate flash message based on whether this is an update or new extraction
+      if existing_product
+        flash[:info] = "🔄 Updating existing product data for this URL. Previous data will be replaced with fresh results."
+      else
+        flash[:success] = "✅ Product extraction started! Processing your URL now."
+      end
       
       # Redirect to home page with job ID for real-time tracking
       redirect_to root_path(job_id: extraction_job.id)
@@ -45,6 +60,35 @@ class HomeController < ApplicationController
       Rails.logger.error "Error creating extraction job: #{e.message}"
       flash[:error] = "An unexpected error occurred while creating the extraction job. Please try again."
       redirect_to root_path
+    end
+  end
+
+  # New method to check URL and return existing product info
+  def check_url
+    url = params[:url]
+    
+    if url.blank? || !valid_url?(url)
+      render json: { exists: false, error: "Invalid URL" }
+      return
+    end
+    
+    existing_product = Product.includes(:product_variants).find_by(url: url)
+    
+    if existing_product
+      render json: {
+        exists: true,
+        product: {
+          id: existing_product.id,
+          name: existing_product.name,
+          status: existing_product.status,
+          created_at: existing_product.created_at.strftime('%B %d, %Y at %I:%M %p'),
+          updated_at: existing_product.updated_at.strftime('%B %d, %Y at %I:%M %p'),
+          variants_count: existing_product.product_variants.count,
+          last_extraction: existing_product.completed? ? 'Completed' : existing_product.status.humanize
+        }
+      }
+    else
+      render json: { exists: false }
     end
   end
 

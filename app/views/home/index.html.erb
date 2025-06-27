@@ -13,6 +13,13 @@
     </div>
   <% end %>
 
+  <% if flash[:info] %>
+    <div class="flash-message flash-info">
+      <div class="flash-icon">🔄</div>
+      <div class="flash-content"><%= flash[:info] %></div>
+    </div>
+  <% end %>
+
   <div class="hero-section">
     <h1 class="app-title">AI Product Comparison Tool</h1>
     <p class="app-description">
@@ -58,7 +65,7 @@
   <% end %>
 
   <div class="extraction-form-container">
-    <%= form_with url: extract_path, local: true, class: "extraction-form", id: "product-extraction-form" do |form| %>
+    <%= form_with url: extract_path, local: true, class: "extraction-form", id: "product-extraction-form", data: { controller: "url-checker" } do |form| %>
       <div class="form-group">
         <%= form.label :url, "Product URL", class: "form-label" %>
         <%= form.url_field :url, 
@@ -66,9 +73,30 @@
             class: "form-input",
             required: true,
             pattern: "https?://.+",
-            title: "Please enter a valid URL starting with http:// or https://" %>
+            title: "Please enter a valid URL starting with http:// or https://",
+            data: { 
+              url_checker_target: "urlInput",
+              action: "input->url-checker#checkUrl"
+            } %>
         <div class="form-help">
           Enter the URL of any product page (Amazon, Target, etc.)
+        </div>
+      </div>
+
+      <!-- Existing Product Information Section -->
+      <div class="existing-product-info" data-url-checker-target="existingInfo" style="display: none;">
+        <div class="info-header">
+          <div class="info-icon">📦</div>
+          <h3>Existing Product Found</h3>
+        </div>
+        <div class="info-content" data-url-checker-target="existingContent">
+          <!-- Content will be populated by JavaScript -->
+        </div>
+        <div class="info-actions">
+          <p class="update-notice">
+            <strong>Note:</strong> Submitting this URL will update the existing product with fresh data. 
+            All previous variants will be replaced with newly extracted information.
+          </p>
         </div>
       </div>
 
@@ -77,7 +105,8 @@
             class: "btn btn-primary btn-large",
             data: { 
               disable_with: "🔄 Extracting...",
-              confirm: false
+              confirm: false,
+              url_checker_target: "submitButton"
             } %>
       </div>
     <% end %>
@@ -133,6 +162,12 @@
     background-color: #fef2f2;
     border-color: #fecaca;
     color: #dc2626;
+  }
+
+  .flash-info {
+    background-color: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1d4ed8;
   }
 
   .flash-icon {
@@ -258,6 +293,18 @@
   .btn-large {
     padding: 1rem 2rem;
     font-size: 1.125rem;
+    font-weight: 700;
+  }
+
+  .btn-update {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    border-color: #d97706;
+  }
+
+  .btn-update:hover {
+    background: linear-gradient(135deg, #d97706, #b45309);
+    border-color: #b45309;
+    transform: translateY(-1px);
   }
 
   .features-section {
@@ -865,6 +912,75 @@
     .variants-table td:nth-child(3) {
       display: none; /* Hide quantity column on very small screens */
     }
+  }
+  
+  /* Existing Product Information Styles */
+  .existing-product-info {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+  }
+
+  .info-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .info-icon {
+    font-size: 1.5rem;
+    margin-right: 0.75rem;
+  }
+
+  .info-header h3 {
+    color: #92400e;
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .info-content {
+    background: #fffbeb;
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #fed7aa;
+  }
+
+  .info-row:last-child {
+    border-bottom: none;
+  }
+
+  .info-label {
+    font-weight: 600;
+    color: #92400e;
+  }
+
+  .info-value {
+    color: #451a03;
+  }
+
+  .update-notice {
+    background: #fef3c7;
+    border: 1px solid #fbbf24;
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin: 0;
+    font-size: 0.875rem;
+    color: #92400e;
+  }
+
+  .update-notice strong {
+    color: #78350f;
   }
 </style>
 

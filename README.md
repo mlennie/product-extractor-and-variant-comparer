@@ -15,6 +15,47 @@ This tool helps users compare products across different suppliers or listings ba
 - **Export Capabilities**: Download results as CSV or JSON
 - **Comprehensive Testing**: 299+ tests with high coverage
 
+## 🔄 URL Update Logic
+
+The application implements intelligent URL handling to ensure **only one product exists per URL** and supports manual updates at any time.
+
+### Core Behavior
+
+When a URL is submitted that already exists in the system:
+
+- ✅ **Updates Existing Product**: Finds the original product record by URL
+- ✅ **Replaces All Variants**: Completely removes old variants and creates fresh ones
+- ✅ **Preserves Product ID**: Same product record is updated (no duplicates created)
+- ✅ **Updates Metadata**: Product name, status, and timestamps are refreshed
+
+### User Experience
+
+- **Real-time Detection**: As users type URLs, the system detects existing products
+- **Clear Messaging**: Different notifications for updates vs new extractions:
+  - 🔄 "Updating existing product data for this URL. Previous data will be replaced with fresh results."
+  - ✅ "Product extraction started! Processing your URL now."
+- **Existing Product Info**: Shows current product details when URL already exists
+- **Manual Updates**: Users can trigger re-processing of any product at any time
+
+### Technical Implementation
+
+```ruby
+# URL Uniqueness Constraint (Database + Model)
+validates :url, presence: true, uniqueness: true
+
+# Update Logic in ProductDatabaseService
+product = Product.find_or_initialize_by(url: url)  # Find existing or create new
+product.product_variants.destroy_all              # Remove old variants
+variants = create_product_variants(product, data)  # Create fresh variants
+```
+
+### Benefits
+
+- **No Data Bloat**: Prevents duplicate products for the same URL
+- **Fresh Information**: Updates always provide current product data
+- **User Control**: Manual refresh capability for any product
+- **Efficient Storage**: Single source of truth per URL
+
 ## 🏗️ Architecture & Design
 
 ### Core Components

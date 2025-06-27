@@ -377,4 +377,86 @@ RSpec.describe "Homes", type: :request do
       end
     end
   end
+
+  describe "POST /check_url" do
+    let(:existing_product) { create(:product, :with_variants, url: "https://example.com/existing") }
+    
+    context "with valid URL that has existing product" do
+      it "returns existing product information" do
+        post check_url_path, params: { url: existing_product.url }, as: :json
+        
+        expect(response).to have_http_status(:ok)
+        
+        json_response = JSON.parse(response.body)
+        expect(json_response["exists"]).to be true
+        expect(json_response["product"]["id"]).to eq(existing_product.id)
+        expect(json_response["product"]["name"]).to eq(existing_product.name)
+        expect(json_response["product"]["status"]).to eq(existing_product.status)
+        expect(json_response["product"]["variants_count"]).to eq(existing_product.product_variants.count)
+      end
+    end
+    
+    context "with valid URL that has no existing product" do
+      it "returns exists false" do
+        post check_url_path, params: { url: "https://newurl.com/product" }, as: :json
+        
+        expect(response).to have_http_status(:ok)
+        
+        json_response = JSON.parse(response.body)
+        expect(json_response["exists"]).to be false
+      end
+    end
+    
+    context "with invalid URL" do
+      it "returns error for invalid URL" do
+        post check_url_path, params: { url: "invalid-url" }, as: :json
+        
+        expect(response).to have_http_status(:ok)
+        
+        json_response = JSON.parse(response.body)
+        expect(json_response["exists"]).to be false
+        expect(json_response["error"]).to eq("Invalid URL")
+      end
+    end
+    
+    context "with blank URL" do
+      it "returns error for blank URL" do
+        post check_url_path, params: { url: "" }, as: :json
+        
+        expect(response).to have_http_status(:ok)
+        
+        json_response = JSON.parse(response.body)
+        expect(json_response["exists"]).to be false
+        expect(json_response["error"]).to eq("Invalid URL")
+      end
+    end
+  end
+
+  describe "Enhanced POST /extract with update messaging" do
+    let(:existing_product) { create(:product, url: "https://example.com/existing") }
+    
+    context "when URL already has an existing product" do
+      it "shows update message instead of creation message" do
+        post extract_path, params: { url: existing_product.url }
+        
+        expect(response).to redirect_to(root_path(job_id: ExtractionJob.last.id))
+        follow_redirect!
+        
+        expect(response.body).to include("🔄 Updating existing product data for this URL")
+        expect(response.body).to include("Previous data will be replaced with fresh results")
+      end
+    end
+    
+    context "when URL is new" do
+      it "shows creation message" do
+        post extract_path, params: { url: "https://newproduct.com/item" }
+        
+        expect(response).to redirect_to(root_path(job_id: ExtractionJob.last.id))
+        follow_redirect!
+        
+        expect(response.body).to include("✅ Product extraction started!")
+        expect(response.body).not_to include("Updating existing product")
+      end
+    end
+  end
 end
